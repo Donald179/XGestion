@@ -16,7 +16,7 @@ function generateKey(): string {
 
 // Action pour créer une nouvelle licence
 export async function createLicenseAction(formData: FormData) {
-  const planType = formData.get("planType") as string || "mensuel";
+  const planType = (formData.get("planType") as string) || "mensuel";
   const maxUsers = parseInt(formData.get("maxUsers") as string) || 3;
   
   const newKey = generateKey();
