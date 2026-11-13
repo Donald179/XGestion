@@ -51,3 +51,31 @@ export async function getLicensesWithOrgs() {
 
   return list;
 }
+
+import { db } from "@/db";
+import { licenses } from "@/db/schema";
+import { eq, and, gte } from "drizzle-orm";
+
+export async function checkOrganizationLicense(organizationId: string) {
+  const [license] = await db
+    .select()
+    .from(licenses)
+    .where(
+      and(
+        eq(licenses.organizationId, organizationId),
+        eq(licenses.isActive, true)
+      )
+    )
+    .limit(1);
+
+  if (!license) {
+    return { valid: false, message: "Aucune licence active trouvée." };
+  }
+
+  // Vérifier la date d'expiration si elle existe
+  if (license.expiresAt && new Date(license.expiresAt) < new Date()) {
+    return { valid: false, message: "Votre licence a expirée." };
+  }
+
+  return { valid: true, license };
+}
