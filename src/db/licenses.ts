@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { licenses, organizations } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte } from "drizzle-orm";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 
@@ -52,10 +52,7 @@ export async function getLicensesWithOrgs() {
   return list;
 }
 
-import { db } from "@/db";
-import { licenses } from "@/db/schema";
-import { eq, and, gte } from "drizzle-orm";
-
+// Vérifier la validité de la licence d'une organisation
 export async function checkOrganizationLicense(organizationId: string) {
   const [license] = await db
     .select()
@@ -72,10 +69,49 @@ export async function checkOrganizationLicense(organizationId: string) {
     return { valid: false, message: "Aucune licence active trouvée." };
   }
 
-  // Vérifier la date d'expiration si elle existe
   if (license.expiresAt && new Date(license.expiresAt) < new Date()) {
-    return { valid: false, message: "Votre licence a expirée." };
+    return { valid: false, message: "Votre licence a expiré." };
   }
 
   return { valid: true, license };
+}
+
+// Action pour activer une clé saisie par un client
+export async function activateUserLicenseAction(formData: FormData, organizationId: string) {
+  const keyToActivate = (formData.get("licenseKey") as string)?.trim();
+
+  if (!keyToActivate) {
+    return { error: "Veuillez entrer une clé de licence valide." };
+  }
+
+  const [existingLicense] = await db
+    .select()
+    .from(licenses)
+    .where(eq(licenses.licenseKey, keyToActivate))
+    .limit(1);
+
+  if (!existingLicense) {
+    return { error: "Cette clé de licence n'existe pas." };
+  }
+
+  if (existingLicense.organizationId && existingLicense.organizationId !== organizationId) {
+    return { error: "Cette clé est déjà utilisée par une autre organisation." };
+  }
+
+  const durationDays = existingLicense.planType === "annuel" ? 365 : 30;
+  const newExpiresAt = new Date();
+  newExpiresAt.setDate(newExpiresAt.getDate() + durationDays);
+
+  await db
+    .update(licenses)
+    .set({
+      organizationId: organizationId,
+      isActive: true,
+      activatedAt: new Date(),
+      expiresAt: newExpiresAt,
+    })
+    .where(eq(licenses.id, existingLicense.id));
+
+  revalidatePath("/parametres");
+  return { success: "Licence activée avec succès !" };
 }
