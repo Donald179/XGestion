@@ -1,9 +1,9 @@
 import { db } from "@/db";
-import { licenses } from "@/db/schema";
+import { licenses, organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { pageCtx } from "@/lib/auth";
 import { activateUserLicenseAction } from "@/db/licenses";
-import { Building2, KeyRound, Pencil, PlusCircle } from "lucide-react";
+import { Building2, KeyRound, Save } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +23,17 @@ export default async function ParametresPage() {
     : "Illimitée";
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Paramètres de l'abonnement</h1>
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Paramètres de l'entreprise</h1>
+        <p className="text-sm text-gray-500">Gérez les informations de votre structure et votre abonnement SaaS.</p>
+      </div>
 
-      {/* Carte d'état de la licence */}
+      {/* 1. SECTION : État de l'abonnement & Licence */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <KeyRound className="w-5 h-5 text-blue-600" />
-          État de votre licence
+          Abonnement et Licence
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
@@ -50,7 +53,7 @@ export default async function ParametresPage() {
           </div>
         </div>
 
-        {/* Formulaire pour entrer un code de licence à tout moment */}
+        {/* Formulaire pour entrer un code de licence */}
         <div className="pt-4 border-t border-gray-100">
           <h3 className="text-md font-medium text-gray-800 mb-2">Activer une nouvelle clé de licence</h3>
           <form action={async (formData) => {
@@ -71,6 +74,53 @@ export default async function ParametresPage() {
               Activer la clé
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* 2. SECTION : Informations générales de l'entreprise */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
+        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-blue-600" />
+          Informations de l'entreprise
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'entreprise</label>
+            <input 
+              type="text" 
+              defaultValue={ctx.org.name} 
+              disabled 
+              className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email professionnel</label>
+            <input 
+              type="email" 
+              defaultValue={ctx.org.email || ""} 
+              disabled 
+              className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+            <input 
+              type="text" 
+              defaultValue={ctx.org.phone || ""} 
+              disabled 
+              className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-600"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+            <input 
+              type="text" 
+              defaultValue={ctx.org.address || ""} 
+              disabled 
+              className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-lg text-sm text-gray-600"
+            />
+          </div>
         </div>
       </div>
     </div>
