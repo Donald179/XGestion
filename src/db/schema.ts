@@ -184,8 +184,8 @@ export const stockMovements = pgTable(
     organizationId: orgId(),
     productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
     locationId: uuid("location_id").references(() => stockLocations.id, { onDelete: "set null" }),
-    type: text("type").notNull(), // entree|sortie|vente|retour|ajustement|perte|transfert
-    quantity: integer("quantity").notNull(), // signé : +entrée / -sortie
+    type: text("type").notNull(),
+    quantity: integer("quantity").notNull(),
     balanceAfter: integer("balance_after").notNull(),
     reason: text("reason"),
     reference: text("reference"),
@@ -234,7 +234,6 @@ export const serviceOrders = pgTable(
   (t) => [uniqueIndex("so_ref").on(t.organizationId, t.reference), index("so_org").on(t.organizationId, t.status)],
 );
 
-/** Coûts rattachés à une prestation (pièces, déplacement, sous-traitance…) */
 export const serviceOrderItems = pgTable(
   "service_order_items",
   {
@@ -257,7 +256,7 @@ export const sales = pgTable(
     organizationId: orgId(),
     reference: text("reference").notNull(),
     customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
-    status: text("status").notNull().default("validee"), // validee|annulee
+    status: text("status").notNull().default("validee"),
     subtotal: money("subtotal"),
     discount: money("discount"),
     taxAmount: money("tax_amount"),
@@ -294,7 +293,7 @@ export const quotes = pgTable(
     organizationId: orgId(),
     reference: text("reference").notNull(),
     customerId: uuid("customer_id").notNull().references(() => customers.id),
-    status: text("status").notNull().default("brouillon"), // brouillon|envoye|accepte|refuse|converti
+    status: text("status").notNull().default("brouillon"),
     issueDate: date("issue_date").notNull(),
     validUntil: date("valid_until"),
     subtotal: money("subtotal"),
@@ -315,7 +314,7 @@ export const quoteItems = pgTable(
     id: id(),
     organizationId: orgId(),
     quoteId: uuid("quote_id").notNull().references(() => quotes.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull().default("libre"), // produit|service|libre
+    kind: text("kind").notNull().default("libre"),
     productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
     serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
     description: text("description").notNull(),
@@ -331,9 +330,9 @@ export const invoices = pgTable(
     id: id(),
     organizationId: orgId(),
     reference: text("reference").notNull(),
-    type: text("type").notNull().default("facture"), // facture|avoir
+    type: text("type").notNull().default("facture"),
     customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
-    status: text("status").notNull().default("emise"), // emise|partielle|payee|annulee
+    status: text("status").notNull().default("emise"),
     issueDate: date("issue_date").notNull(),
     dueDate: date("due_date"),
     subtotal: money("subtotal"),
@@ -380,11 +379,11 @@ export const payments = pgTable(
     id: id(),
     organizationId: orgId(),
     reference: text("reference").notNull(),
-    kind: text("kind").notNull().default("vente"), // vente|facture|autre
+    kind: text("kind").notNull().default("vente"),
     saleId: uuid("sale_id").references(() => sales.id, { onDelete: "set null" }),
     invoiceId: uuid("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
     customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
-    amount: numeric("amount", { precision: 14, scale: 2, mode: "number" }).notNull(), // négatif = remboursement
+    amount: numeric("amount", { precision: 14, scale: 2, mode: "number" }).notNull(),
     method: text("method").$type<PayMethod>().notNull().default("especes"),
     label: text("label"),
     note: text("note"),
@@ -432,7 +431,7 @@ export const purchaseOrders = pgTable(
     organizationId: orgId(),
     reference: text("reference").notNull(),
     supplierId: uuid("supplier_id").notNull().references(() => suppliers.id),
-    status: text("status").notNull().default("commandee"), // commandee|recue|annulee
+    status: text("status").notNull().default("commandee"),
     orderDate: date("order_date").notNull(),
     expectedDate: date("expected_date"),
     receivedAt: timestamp("received_at", { withTimezone: true }),
@@ -491,8 +490,8 @@ export const auditLogs = pgTable(
   },
   (t) => [index("audit_org_entity").on(t.organizationId, t.entity, t.entityId)],
 );
-import { pgTable, uuid, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 
+/* ───────── Licences SaaS ───────── */
 export const licenses = pgTable("licenses", {
   id: uuid("id").defaultRandom().primaryKey(),
   licenseKey: text("license_key").notNull().unique(),
