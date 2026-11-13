@@ -491,3 +491,16 @@ export const auditLogs = pgTable(
   },
   (t) => [index("audit_org_entity").on(t.organizationId, t.entity, t.entityId)],
 );
+import { pgTable, uuid, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+
+export const licenses = pgTable("licenses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  licenseKey: text("license_key").notNull().unique(),
+  planType: text("plan_type").notNull().default("mensuel"),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  maxUsers: integer("max_users").notNull().default(3),
+  isActive: boolean("is_active").notNull().default(true),
+  activatedAt: timestamp("activated_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
