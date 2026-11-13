@@ -4,16 +4,25 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { organizationMembers, passwordResets, profiles, sessions } from "@/db/schema";
+import { organizationMembers, passwordResets, profiles, sessions, licenses } from "@/db/schema";
 import { run, str, optStr, type ActionState } from "@/lib/action";
 import { actCtx, createSession, destroySession, hashPassword, hashToken, loadCtx, newToken, setActiveOrg, UserError, verifyPassword } from "@/lib/auth";
 import { createOrganization } from "@/lib/biz";
+import crypto from "crypto";
 
 const attempts = new Map<string, { n: number; t: number }>();
 function throttle(key: string) {
   const a = attempts.get(key);
   if (a && Date.now() - a.t < 15 * 60_000 && a.n >= 8) throw new UserError("Trop de tentatives. Réessayez dans quelques minutes.");
   attempts.set(key, !a || Date.now() - a.t >= 15 * 60_000 ? { n: 1, t: Date.now() } : { n: a.n + 1, t: a.t });
+}
+
+// Fonction utilitaire pour générer une clé d'essai unique
+function generateTrialKey(): string {
+  const p1 = crypto.randomBytes(2).toString("hex").toUpperCase();
+  const p2 = crypto.randomBytes(2).toString("hex").toUpperCase();
+  const p3 = crypto.randomBytes(2).toString("hex").toUpperCase();
+  return `TRIAL-${p1}-${p2}-${p3}`;
 }
 
 const pwd = z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères.").max(100);
@@ -63,7 +72,6 @@ export async function forgotAction(_: ActionState, fd: FormData) {
     if (u) {
       const { token, hash } = newToken();
       await db.insert(passwordResets).values({ tokenHash: hash, userId: u.id, expiresAt: new Date(Date.now() + 3600_000) });
-      // Aucun fournisseur d'email n'est branché dans ce MVP : le lien est affiché (mode démo) ou journalisé.
       const link = `/reset-password?token=${token}`;
       console.log("[reset-password]", email, link);
       if (process.env.RESET_LINK_MODE !== "hidden") return { message: `Lien de réinitialisation (valable 1 h) : ${link}`, redirect: undefined };
@@ -97,14 +105,33 @@ export async function createOrgAction(_: ActionState, fd: FormData) {
     const name = z.string().min(2, "Nom de l'entreprise requis.").parse(str(fd, "name"));
     const email = optStr(fd, "email");
     if (email) z.string().email("Email professionnel invalide.").parse(email);
-    const org = await db.transaction((tx) =>
-      createOrganization(tx, r.user.id, {
+    
+    // Création de l'organisation via la transaction
+    const org = await db.transaction(async (tx) => {
+      const newOrg = await createOrganization(tx, r.user.id, {
         name, email, phone: optStr(fd, "phone"), address: optStr(fd, "address"),
         currency: str(fd, "currency") || "XOF", currencyLabel: str(fd, "currencyLabel") || "FCFA",
-      }),
-    );
+      });
+
+      // Attribution automatique de 14 jours d'essai gratuit
+      const trialExpiresAt = new Date();
+      trialExpiresAt.setDate(trialExpiresAt.getDate() + 14); // +14 jours
+
+      await tx.insert(licenses).values({
+        licenseKey: generateTrialKey(),
+        planType: "essai_14_jours",
+        organizationId: newOrg.id,
+        maxUsers: 3,
+        isActive: true,
+        activatedAt: new Date(),
+        expiresAt: trialExpiresAt,
+      });
+
+      return newOrg;
+    });
+
     await setActiveOrg(org.id);
-    return { redirect: "/dashboard", message: "Entreprise créée." };
+    return { redirect: "/dashboard", message: "Entreprise créée avec 14 jours d'essai gratuit !" };
   });
 }
 
