@@ -1,9 +1,9 @@
 import { db } from "@/db";
-import { licenses, organizations } from "@/db/schema";
+import { licenses } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { pageCtx } from "@/lib/auth";
 import { activateUserLicenseAction } from "@/db/licenses";
-import { Building2, KeyRound, Save } from "lucide-react";
+import { Building2, KeyRound } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,15 @@ export default async function ParametresPage() {
     .limit(1);
 
   const isTrial = currentLicense?.planType?.includes("essai");
+
+  // Calcul du décompte des jours restants
+  let remainingDays = 0;
+  if (currentLicense?.expiresAt) {
+    const diffTime = new Date(currentLicense.expiresAt).getTime() - new Date().getTime();
+    remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (remainingDays < 0) remainingDays = 0;
+  }
+
   const expiresAtFormatted = currentLicense?.expiresAt 
     ? new Date(currentLicense.expiresAt).toLocaleDateString("fr-FR", { day: 'numeric', month: 'long', year: 'numeric' })
     : "Illimitée";
@@ -29,18 +38,18 @@ export default async function ParametresPage() {
         <p className="text-sm text-gray-500">Gérez les informations de votre structure et votre abonnement SaaS.</p>
       </div>
 
-      {/* 1. SECTION : État de l'abonnement & Licence */}
+      {/* 1. SECTION : État de l'abonnement & Décompte des jours */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <KeyRound className="w-5 h-5 text-blue-600" />
           Abonnement et Licence
         </h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
           <div>
             <p className="text-sm text-gray-500">Statut actuel</p>
-            <p className={`font-medium ${currentLicense?.isActive ? "text-green-600" : "text-red-600"}`}>
-              {currentLicense?.isActive ? (isTrial ? "⏳ Période d'essai active" : "✅ Licence Active") : "❌ Expirée"}
+            <p className={`font-medium ${currentLicense?.isActive && remainingDays > 0 ? "text-green-600" : "text-red-600"}`}>
+              {currentLicense?.isActive && remainingDays > 0 ? (isTrial ? "⏳ Essai gratuit" : "✅ Actif") : "❌ Expiré"}
             </p>
           </div>
           <div>
@@ -48,8 +57,14 @@ export default async function ParametresPage() {
             <p className="font-medium text-gray-900 uppercase">{currentLicense?.planType || "Aucun"}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Date d'expiration</p>
-            <p className="font-medium text-gray-900">{expiresAtFormatted}</p>
+            <p className="text-sm text-gray-500">Jours restants</p>
+            <p className={`font-bold ${remainingDays <= 3 ? "text-red-600" : "text-blue-600"}`}>
+              {currentLicense?.expiresAt ? `${remainingDays} jour(s)` : "Illimité"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Expiration</p>
+            <p className="font-medium text-gray-900 text-sm">{expiresAtFormatted}</p>
           </div>
         </div>
 
