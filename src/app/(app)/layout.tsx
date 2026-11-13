@@ -14,27 +14,21 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await pageCtx();
 
-  // 1. Vérification de la licence de l'organisation active
+  // 1. Récupérer la licence de l'organisation active
   const [license] = await db
     .select()
     .from(licenses)
-    .where(
-      and(
-        eq(licenses.organizationId, ctx.org.id),
-        eq(licenses.isActive, true)
-      )
-    )
+    .where(eq(licenses.organizationId, ctx.org.id))
     .limit(1);
 
-  // 2. Si aucune licence active n'est trouvée, ou si elle a expiré
-  const isExpired = license?.expiresAt ? new Date(license.expiresAt) < new Date() : false;
+  const now = new Date();
+  const isExpired = license?.expiresAt ? new Date(license.expiresAt) < now : true;
 
-  // Si pas de licence ou expirée, on peut rediriger vers une page de blocage ou d'activation
-  // (Exception faite si vous souhaitez leur laisser un accès restreint aux paramètres)
-  if (!license || isExpired) {
-    // Optionnel : Vous pouvez créer une page dédiée comme /admin/licenses/expiree
-    // Pour l'instant, on redirige vers les paramètres ou une page dédiée
-    // redirect("/parametres?erreur=licence_invalide");
+  // 2. Si aucune licence ou si la période d'essai/licence est expirée
+  // On autorise quand même l'accès à la page des paramètres pour qu'il puisse entrer un code !
+  // (Vous pouvez affiner selon la route active)
+  if (!license || (isExpired && !ctx)) {
+    // Redirection vers une page ou blocage (ex: vers les paramètres)
   }
 
   await syncAlerts(ctx.org.id, ctx.settings.timezone).catch((e) => console.error("syncAlerts", e));
