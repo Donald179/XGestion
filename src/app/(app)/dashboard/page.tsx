@@ -1,58 +1,396 @@
 import Link from "next/link";
-import { AlertTriangle, Banknote, Boxes, CheckCircle2, CircleDollarSign, Clock, Package, PiggyBank, ShoppingBag, TrendingDown, TrendingUp, Users, Wrench } from "lucide-react";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
+import {
+  ArrowUpRight,
+  Banknote,
+  FileText,
+  Package,
+  Plus,
+  ShoppingCart,
+  TrendingUp,
+  Users,
+  AlertTriangle,
+} from "lucide-react";
+import { db } from "@/db";
+import {
+  clients,
+  invoices,
+  products,
+  sales,
+  serviceOrders,
+} from "@/db/schema";
 import { pageCtx } from "@/lib/auth";
-import { getDashboard } from "@/lib/stats";
-import { PERIODS, METHOD_LABELS, fmtDate, fmtMoney, fmtNum, resolveRange } from "@/lib/format";
-import { PageHeader, StatCard } from "@/components/ui";
-import { PeriodPicker } from "@/components/client";
-import { DashboardCharts } from "@/components/charts";
+import { fmtMoney, fmtDate } from "@/lib/format";
+import { Badge, Card, PageHeader } from "@/components/ui";
+import { BarChart, DonutChart } from "@/components/dashboard-charts";
 
 export const metadata = { title: "Tableau de bord" };
+export const dynamic = "force-dynamic";
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ p?: string; from?: string; to?: string }> }) {
-  const ctx = await pageCtx("dashboard.view");
-  const sp = await searchParams;
-  const tz = ctx.settings.timezone;
-  const range = resolveRange(sp, tz);
-  const d = await getDashboard(ctx.org.id, range, tz);
-  const M = (n: number) => fmtMoney(n, ctx.settings);
-  const nothing = d.customers === 0 && d.products === 0 && d.ca === 0 && d.depenses === 0;
+export default async function DashboardPage() {
+  const ctx = await pageCtx();
+  const { org, settings } = ctx;
+  const currency = settings.currencyLabel || "FCFA";
+
+  // 1. Récupération des totaux et statistiques en base de données
+  const [
+    allSales,
+    allInvoices,
+    [{ clientCount }],
+    allProducts,
+    recentSales,
+    recentInvoices,
+  ] = await Promise.all([
+    db.select().from(sales).where(eq(sales.organizationId, org.id)),
+    db.select().from(invoices).where(eq(invoices.organizationId, org.id)),
+    db
+      .select({ clientCount: sql<number>`count(*)::int` })
+      .from(clients)
+      .where(eq(clients.organizationId, org.id)),
+    db.select().from(products).where(eq(products.organizationId, org.id)),
+    db
+      .select()
+      .from(sales)
+      .where(eq(sales.organizationId, org.id))
+      .orderBy(desc(sales.createdAt))
+      .limit(5),
+    db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.organizationId, org.id))
+      .orderBy(desc(invoices.createdAt))
+      .limit(5),
+  ]);
+
+  // 2. Calculs des montants financiers
+  const totalSalesAmount = allSales.reduce(
+    (sum, item) => sum + Number(item.total || 0),
+    0
+  );
+  const totalInvoicesPaid = allInvoices
+    .filter((inv) => inv.status === "payee")
+    .reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const totalInvoicesPending = allInvoices
+    .filter((inv) => inv.status === "en_attente" || inv.status === "partielle")
+    .reduce((sum, item) => sum + Number(item.total || 0), 0);
+
+  const totalRevenue = totalSalesAmount + totalInvoicesPaid;
+
+  // Produits en alerte de stock bas
+  const lowStockProducts = allProducts.filter(
+    (p) => Number(p.stockQuantity || 0) <= Number(p.minStockAlert || 5)
+  );
+
+  // 3. Préparation des données pour le graphique en bâtons (6 derniers mois)
+  const monthNames = [
+    "Jan",
+    "Fév",
+    "Mar",
+    "Avr",
+    "Mai",
+    "Juin",
+    "Juil",
+    "Août",
+    "Sept",
+    "Oct",
+    "Nov",
+    "Déc",
+  ];
+  const now = new Date();
+  const monthlyChartData = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+
+    const salesMonth = allSales
+      .filter((s) => {
+        const sd = new Date(s.createdAt);
+        return sd.getMonth() === m && sd.getFullYear() === y;
+      })
+      .reduce((acc, s) => acc + Number(s.total || 0), 0);
+
+    const invMonth = allInvoices
+      .filter((inv) => {
+        const idate = new Date(inv.createdAt);
+        return (
+          inv.status === "payee" &&
+          idate.getMonth() === m &&
+          idate.getFullYear() === y
+        );
+      })
+      .reduce((acc, inv) => acc + Number(inv.total || 0), 0);
+
+    return {
+      label: monthNames[m],
+      value: salesMonth + invMonth,
+    };
+  });
+
+  // 4. Préparation des données pour le graphique sphérique (Donut)
+  const donutData = [
+    {
+      label: "Ventes directes",
+      value: totalSalesAmount,
+      color: "#2563eb", // Bleu
+    },
+    {
+      label: "Factures encaissées",
+      value: totalInvoicesPaid,
+      color: "#10b981", // Vert
+    },
+    {
+      label: "Factures en attente",
+      value: totalInvoicesPending,
+      color: "#f59e0b", // Orange
+    },
+  ];
+
   return (
-    <>
-      <PageHeader title="Tableau de bord" subtitle={`Du ${fmtDate(range.from)} au ${fmtDate(range.to)} · indicateurs calculés depuis vos données réelles`}>
-        <PeriodPicker periods={PERIODS} current={range.period} from={range.from} to={range.to} />
+    <div className="space-y-6">
+      <PageHeader
+        title={`Bonjour, ${ctx.user.fullName}`}
+        subtitle={`Tableau de bord de ${org.name}`}
+      >
+        <Link href="/ventes/nouvelle" className="btn-primary">
+          <Plus className="h-4 w-4" /> Nouvelle vente
+        </Link>
+        <Link href="/factures/nouvelle" className="btn-outline">
+          <FileText className="h-4 w-4" /> Nouvelle facture
+        </Link>
       </PageHeader>
-      {nothing && (
-        <div className="card mb-5 flex flex-wrap items-center justify-between gap-3 border-brand-100 bg-brand-50 p-4 text-sm text-slate-700">
-          <span>Bienvenue ! Commencez par ajouter vos clients, produits et prestations. Les indicateurs se rempliront automatiquement.</span>
-          <span className="flex gap-2"><Link href="/clients" className="btn-primary btn-sm">Ajouter un client</Link><Link href="/produits" className="btn-outline btn-sm">Ajouter un produit</Link></span>
+
+      {/* CARTES KPI PRINCIPALES */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">
+              Chiffre d'affaires encaissé
+            </span>
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+              <Banknote className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-3">
+            {fmtMoney(totalRevenue, currency)}
+          </p>
+          <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1 font-medium">
+            <TrendingUp className="h-3.5 w-3.5" /> Ventes + Factures payées
+          </p>
         </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">
+              Factures en attente
+            </span>
+            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
+              <FileText className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-3">
+            {fmtMoney(totalInvoicesPending, currency)}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            {
+              allInvoices.filter(
+                (i) => i.status === "en_attente" || i.status === "partielle"
+              ).length
+            }{" "}
+            facture(s) à recouvrer
+          </p>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">
+              Clients enregistrés
+            </span>
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+              <Users className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-3">
+            {clientCount}
+          </p>
+          <Link
+            href="/clients"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1 font-medium"
+          >
+            Voir le répertoire <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">
+              Alertes de stock
+            </span>
+            <div
+              className={`p-2 rounded-lg ${
+                lowStockProducts.length > 0
+                  ? "bg-rose-50 text-rose-600"
+                  : "bg-slate-50 text-slate-600"
+              }`}
+            >
+              <Package className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-slate-900 mt-3">
+            {lowStockProducts.length}
+          </p>
+          <Link
+            href="/stocks"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1 font-medium"
+          >
+            Gérer l'inventaire <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </div>
+
+      {/* GRAPHIQUES (BÂTONS & SPHÉRIQUE) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <BarChart data={monthlyChartData} />
+        <DonutChart items={donutData} />
+      </div>
+
+      {/* DERNIÈRES OPÉRATIONS & ALERTES */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card
+          title="Dernières ventes"
+          actions={
+            <Link
+              href="/ventes"
+              className="text-xs font-medium text-blue-600 hover:underline"
+            >
+              Tout voir
+            </Link>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Réf.</th>
+                  <th>Date</th>
+                  <th className="text-right">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSales.map((sale) => (
+                  <tr key={sale.id}>
+                    <td className="font-medium text-slate-800">
+                      <Link
+                        href={`/ventes/${sale.id}`}
+                        className="hover:text-blue-600"
+                      >
+                        {sale.reference}
+                      </Link>
+                    </td>
+                    <td className="text-slate-500">
+                      {fmtDate(sale.createdAt, settings.timezone)}
+                    </td>
+                    <td className="text-right font-semibold text-slate-900">
+                      {fmtMoney(Number(sale.total), currency)}
+                    </td>
+                  </tr>
+                ))}
+                {recentSales.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="text-center py-6 text-slate-400 text-sm"
+                    >
+                      Aucune vente enregistrée.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card
+          title="Dernières factures"
+          actions={
+            <Link
+              href="/factures"
+              className="text-xs font-medium text-blue-600 hover:underline"
+            >
+              Tout voir
+            </Link>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Statut</th>
+                  <th className="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentInvoices.map((inv) => (
+                  <tr key={inv.id}>
+                    <td className="font-medium text-slate-800">
+                      <Link
+                        href={`/factures/${inv.id}`}
+                        className="hover:text-blue-600"
+                      >
+                        {inv.number}
+                      </Link>
+                    </td>
+                    <td>
+                      <Badge
+                        tone={
+                          inv.status === "payee"
+                            ? "green"
+                            : inv.status === "annulee"
+                            ? "red"
+                            : "orange"
+                        }
+                      >
+                        {inv.status}
+                      </Badge>
+                    </td>
+                    <td className="text-right font-semibold text-slate-900">
+                      {fmtMoney(Number(inv.total), currency)}
+                    </td>
+                  </tr>
+                ))}
+                {recentInvoices.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="text-center py-6 text-slate-400 text-sm"
+                    >
+                      Aucune facture enregistrée.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      {/* ALERTE PRODUITS EN RUPTURE */}
+      {lowStockProducts.length > 0 && (
+        <Card title="Produits nécessitant un réapprovisionnement">
+          <div className="p-4 flex flex-wrap gap-3">
+            {lowStockProducts.slice(0, 8).map((prod) => (
+              <div
+                key={prod.id}
+                className="flex items-center gap-2 px-3 py-2 bg-rose-50 border border-rose-100 rounded-lg text-sm"
+              >
+                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span className="font-medium text-slate-800">{prod.name}</span>
+                <Badge tone="red">Reste : {prod.stockQuantity}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Chiffre d'affaires" value={M(d.ca)} icon={<TrendingUp className="h-5 w-5" />} hint="Ventes + prestations facturées" />
-        <StatCard label="Total des ventes" value={M(d.ventes)} icon={<ShoppingBag className="h-5 w-5" />} />
-        <StatCard label="Total des prestations" value={M(d.prestations)} icon={<Wrench className="h-5 w-5" />} tone="violet" />
-        <StatCard label="Total des dépenses" value={M(d.depenses)} icon={<TrendingDown className="h-5 w-5" />} tone="red" />
-        <StatCard label="Bénéfice estimé" value={M(d.benefice)} icon={<PiggyBank className="h-5 w-5" />} tone={d.benefice >= 0 ? "green" : "red"} hint="CA − dépenses" />
-        <StatCard label="Paiements reçus" value={M(d.encaisse)} icon={<Banknote className="h-5 w-5" />} tone="green" hint="Encaissé sur la période" />
-        <StatCard label="Impayés (créances)" value={M(d.impayes)} icon={<CircleDollarSign className="h-5 w-5" />} tone="red" hint="Reste dû à ce jour" />
-        <StatCard label="Clients" value={fmtNum(d.customers)} icon={<Users className="h-5 w-5" />} tone="gray" />
-        <StatCard label="Produits actifs" value={fmtNum(d.products)} icon={<Package className="h-5 w-5" />} tone="gray" />
-        <StatCard label="Alertes de stock" value={fmtNum(d.low)} icon={d.low ? <AlertTriangle className="h-5 w-5" /> : <Boxes className="h-5 w-5" />} tone={d.low ? "orange" : "gray"} hint="Stock ≤ seuil" />
-        <StatCard label="Prestations en cours" value={fmtNum(d.running)} icon={<Clock className="h-5 w-5" />} tone="orange" hint={`${d.waiting} en attente`} />
-        <StatCard label="Prestations terminées" value={fmtNum(d.done)} icon={<CheckCircle2 className="h-5 w-5" />} tone="green" hint="Sur la période" />
-      </div>
-      <div className="mt-5">
-        <DashboardCharts
-          series={d.series}
-          top={d.top}
-          perSeller={d.perSeller}
-          byMethod={d.byMethod}
-          split={[{ name: "Ventes", value: d.ventes }, { name: "Prestations", value: d.prestations }]}
-          currency={ctx.settings.currencyLabel}
-          methodLabels={METHOD_LABELS}
-        />
-      </div>
-    </>
+    </div>
   );
 }
