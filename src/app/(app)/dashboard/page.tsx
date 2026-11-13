@@ -1,23 +1,20 @@
 import Link from "next/link";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   ArrowUpRight,
   Banknote,
   FileText,
   Package,
   Plus,
-  ShoppingCart,
   TrendingUp,
   Users,
   AlertTriangle,
 } from "lucide-react";
 import { db } from "@/db";
 import {
-  clients,
   invoices,
   products,
   sales,
-  serviceOrders,
 } from "@/db/schema";
 import { pageCtx } from "@/lib/auth";
 import { fmtMoney, fmtDate } from "@/lib/format";
@@ -32,21 +29,16 @@ export default async function DashboardPage() {
   const { org, settings } = ctx;
   const currency = settings.currencyLabel || "FCFA";
 
-  // 1. Récupération des totaux et statistiques en base de données
+  // 1. Récupération sécurisée des données en base de données
   const [
     allSales,
     allInvoices,
-    [{ clientCount }],
     allProducts,
     recentSales,
     recentInvoices,
   ] = await Promise.all([
     db.select().from(sales).where(eq(sales.organizationId, org.id)),
     db.select().from(invoices).where(eq(invoices.organizationId, org.id)),
-    db
-      .select({ clientCount: sql<number>`count(*)::int` })
-      .from(clients)
-      .where(eq(clients.organizationId, org.id)),
     db.select().from(products).where(eq(products.organizationId, org.id)),
     db
       .select()
@@ -81,20 +73,10 @@ export default async function DashboardPage() {
     (p) => Number(p.stockQuantity || 0) <= Number(p.minStockAlert || 5)
   );
 
-  // 3. Préparation des données pour le graphique en bâtons (6 derniers mois)
+  // 3. Données pour le graphique en bâtons (6 derniers mois)
   const monthNames = [
-    "Jan",
-    "Fév",
-    "Mar",
-    "Avr",
-    "Mai",
-    "Juin",
-    "Juil",
-    "Août",
-    "Sept",
-    "Oct",
-    "Nov",
-    "Déc",
+    "Jan", "Fév", "Mar", "Avr", "Mai", "Juin", 
+    "Juil", "Août", "Sept", "Oct", "Nov", "Déc"
   ];
   const now = new Date();
   const monthlyChartData = Array.from({ length: 6 }, (_, i) => {
@@ -126,22 +108,22 @@ export default async function DashboardPage() {
     };
   });
 
-  // 4. Préparation des données pour le graphique sphérique (Donut)
+  // 4. Données pour le graphique sphérique (Donut)
   const donutData = [
     {
       label: "Ventes directes",
-      value: totalSalesAmount,
-      color: "#2563eb", // Bleu
+      value: totalSalesAmount || 1,
+      color: "#2563eb",
     },
     {
       label: "Factures encaissées",
-      value: totalInvoicesPaid,
-      color: "#10b981", // Vert
+      value: totalInvoicesPaid || 1,
+      color: "#10b981",
     },
     {
       label: "Factures en attente",
-      value: totalInvoicesPending,
-      color: "#f59e0b", // Orange
+      value: totalInvoicesPending || 1,
+      color: "#f59e0b",
     },
   ];
 
@@ -203,20 +185,20 @@ export default async function DashboardPage() {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-slate-500">
-              Clients enregistrés
+              Total Ventes
             </span>
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
               <Users className="h-5 w-5" />
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-3">
-            {clientCount}
+            {allSales.length}
           </p>
           <Link
-            href="/clients"
+            href="/ventes"
             className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1 font-medium"
           >
-            Voir le répertoire <ArrowUpRight className="h-3 w-3" />
+            Voir les ventes <ArrowUpRight className="h-3 w-3" />
           </Link>
         </div>
 
@@ -253,7 +235,7 @@ export default async function DashboardPage() {
         <DonutChart items={donutData} />
       </div>
 
-      {/* DERNIÈRES OPÉRATIONS & ALERTES */}
+      {/* DERNIÈRES OPÉRATIONS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card
           title="Dernières ventes"
