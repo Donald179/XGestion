@@ -1,4 +1,4 @@
-import { createLicenseAction, getLicensesWithOrgs } from "@/app/actions/licenses";
+import { createLicenseAction, getLicensesWithOrgs } from "@/db/licenses";
 export default async function AdminLicensesPage() {
   const allLicenses = await getLicensesWithOrgs();
 
