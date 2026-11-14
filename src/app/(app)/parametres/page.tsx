@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { Building2, KeyRound, Pencil, PlusCircle, ShieldCheck } from "lucide-react";
++import { Building2, KeyRound, Pencil, ShieldCheck } from "lucide-react";
 import { db } from "@/db";
 import { auditLogs, profiles, licenses } from "@/db/schema";
 import { pageCtx } from "@/lib/auth";
@@ -46,7 +45,6 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Paramètres" subtitle="Entreprise, devise, facturation et règles de stock">
-        <Link href="/onboarding" className="btn-outline"><PlusCircle className="h-4 w-4" /> Créer une autre entreprise</Link>
         <FormDialog title="Changer mon mot de passe" triggerClass="btn-outline" trigger={<><KeyRound className="h-4 w-4" /> Mon mot de passe</>}
           fields={[{ name: "current", label: "Mot de passe actuel", type: "password", required: true, full: true }, { name: "password", label: "Nouveau mot de passe (8 car. min.)", type: "password", required: true, full: true }]} action={changePasswordAction} />
       </PageHeader>
