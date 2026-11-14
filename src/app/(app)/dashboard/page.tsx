@@ -68,7 +68,7 @@ export default async function DashboardPage() {
 
   const totalRevenue = totalSalesAmount + totalInvoicesPaid;
 
-  // Produits en alerte de stock bas (contournement strict des types TS)
+  // Produits en alerte de stock bas
   const lowStockProducts = allProducts.filter((p: any) => {
     const stockVal = Number(p.stock ?? p.quantity ?? p.stockQuantity ?? 0);
     const minAlert = Number(p.minStock ?? p.minStockAlert ?? 5);
@@ -155,7 +155,8 @@ export default async function DashboardPage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-3">
-            {fmtMoney(totalRevenue, currency)}
+            {/* CORRECTION : On passe l'objet settings au lieu de la string simple */}
+            {fmtMoney(totalRevenue, settings)}
           </p>
           <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1 font-medium">
             <TrendingUp className="h-3.5 w-3.5" /> Ventes + Factures payées
@@ -172,7 +173,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-3">
-            {fmtMoney(totalInvoicesPending, currency)}
+            {fmtMoney(totalInvoicesPending, settings)}
           </p>
           <p className="text-xs text-slate-500 mt-1">
             {
@@ -231,7 +232,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* GRAPHIQUES (BÂTONS & SPHÉRIQUE) */}
+      {/* GRAPHIQUES */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BarChart data={monthlyChartData} />
         <DonutChart items={donutData} />
@@ -274,7 +275,7 @@ export default async function DashboardPage() {
                       {fmtDate(sale.createdAt, settings.timezone)}
                     </td>
                     <td className="text-right font-semibold text-slate-900">
-                      {fmtMoney(Number(sale.total), currency)}
+                      {fmtMoney(Number(sale.total), settings)}
                     </td>
                   </tr>
                 ))}
@@ -338,7 +339,7 @@ export default async function DashboardPage() {
                       </Badge>
                     </td>
                     <td className="text-right font-semibold text-slate-900">
-                      {fmtMoney(Number(inv.total), currency)}
+                      {fmtMoney(Number(inv.total), settings)}
                     </td>
                   </tr>
                 ))}
