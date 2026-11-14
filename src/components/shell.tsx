@@ -2,11 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
-import { BarChart3, Bell, Boxes, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShoppingCart, Truck, UserCog, Users, Wallet, Wrench, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { BarChart3, Bell, Boxes, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, Moon, Package, Receipt, Settings, ShoppingCart, Sun, Truck, UserCog, Users, Wallet, Wrench, X } from "lucide-react";
 
 const ICONS = { LayoutDashboard, Users, Wrench, Package, Boxes, ShoppingCart, FileText, Receipt, Wallet, Truck, BarChart3, Bell, UserCog, Settings } as const;
 type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  function toggleTheme() {
+    const nextDark = !document.documentElement.classList.contains("dark");
+    document.documentElement.classList.toggle("dark", nextDark);
+    localStorage.setItem("xgestion-theme", nextDark ? "dark" : "light");
+    setDark(nextDark);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-pressed={dark}
+      aria-label={dark ? "Activer le thème clair" : "Activer le thème sombre"}
+      title={dark ? "Activer le thème clair" : "Activer le thème sombre"}
+      className="rounded-full p-2 text-slate-600 hover:bg-slate-100"
+    >
+      {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </button>
+  );
+}
 
 export function AppShell({
   nav, orgName, orgs, activeOrg, userName, roleLabel, unread, logo, switchOrg, logout, children,
@@ -65,6 +93,7 @@ export function AppShell({
             </form>
           ) : <span className="hidden text-sm font-semibold text-slate-700 sm:block">{orgName}</span>}
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <Link href="/notifications" aria-label="Notifications" className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100">
               <Bell className="h-5 w-5" />
               {unread > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{unread > 99 ? "99+" : unread}</span>}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
 import "./globals.css";
 import { ToastProvider } from "@/components/client";
 import { PwaRegister } from "@/components/pwa";
@@ -16,7 +17,16 @@ export const viewport: Viewport = { themeColor: "#0b1b3b", width: "device-width"
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `try{const t=localStorage.getItem("xgestion-theme");if(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch{}`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <ToastProvider>{children}</ToastProvider>
         <PwaRegister />
