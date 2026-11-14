@@ -27,7 +27,6 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const ctx = await pageCtx();
   const { org, settings } = ctx;
-  const currency = settings.currencyLabel || "FCFA";
 
   // 1. Récupération sécurisée des données en base de données
   const [
@@ -60,10 +59,10 @@ export default async function DashboardPage() {
     0
   );
   const totalInvoicesPaid = allInvoices
-    .filter((inv) => inv.status === "payee")
+    .filter((inv: any) => inv.status === "payee")
     .reduce((sum, item) => sum + Number(item.total || 0), 0);
   const totalInvoicesPending = allInvoices
-    .filter((inv) => inv.status === "en_attente" || inv.status === "partielle")
+    .filter((inv: any) => inv.status === "en_attente" || inv.status === "partielle")
     .reduce((sum, item) => sum + Number(item.total || 0), 0);
 
   const totalRevenue = totalSalesAmount + totalInvoicesPaid;
@@ -94,7 +93,7 @@ export default async function DashboardPage() {
       .reduce((acc, s) => acc + Number(s.total || 0), 0);
 
     const invMonth = allInvoices
-      .filter((inv) => {
+      .filter((inv: any) => {
         const idate = new Date(inv.createdAt);
         return (
           inv.status === "payee" &&
@@ -177,7 +176,7 @@ export default async function DashboardPage() {
           <p className="text-xs text-slate-500 mt-1">
             {
               allInvoices.filter(
-                (i) => i.status === "en_attente" || i.status === "partielle"
+                (i: any) => i.status === "en_attente" || i.status === "partielle"
               ).length
             }{" "}
             facture(s) à recouvrer
@@ -260,7 +259,7 @@ export default async function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentSales.map((sale) => (
+                {recentSales.map((sale: any) => (
                   <tr key={sale.id}>
                     <td className="font-medium text-slate-800">
                       <Link
@@ -314,14 +313,15 @@ export default async function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentInvoices.map((inv) => (
+                {recentInvoices.map((inv: any) => (
                   <tr key={inv.id}>
                     <td className="font-medium text-slate-800">
                       <Link
                         href={`/factures/${inv.id}`}
                         className="hover:text-blue-600"
                       >
-                        {inv.number}
+                        {/* Contournement sécurisé de la propriété number/reference */}
+                        {inv.number ?? inv.reference ?? inv.id.slice(0, 8)}
                       </Link>
                     </td>
                     <td>
