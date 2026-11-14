@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-+import { Building2, KeyRound, Pencil, ShieldCheck } from "lucide-react";
+import { Building2, KeyRound, Pencil, ShieldCheck } from "lucide-react";
 import { db } from "@/db";
 import { auditLogs, profiles, licenses } from "@/db/schema";
 import { pageCtx } from "@/lib/auth";
