@@ -155,8 +155,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-3">
-            {/* CORRECTION : On passe l'objet settings au lieu de la string simple */}
-            {fmtMoney(totalRevenue, settings)}
+            {fmtMoney(totalRevenue, settings as any)}
           </p>
           <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1 font-medium">
             <TrendingUp className="h-3.5 w-3.5" /> Ventes + Factures payées
@@ -173,7 +172,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <p className="text-2xl font-bold text-slate-900 mt-3">
-            {fmtMoney(totalInvoicesPending, settings)}
+            {fmtMoney(totalInvoicesPending, settings as any)}
           </p>
           <p className="text-xs text-slate-500 mt-1">
             {
@@ -275,7 +274,7 @@ export default async function DashboardPage() {
                       {fmtDate(sale.createdAt, settings.timezone)}
                     </td>
                     <td className="text-right font-semibold text-slate-900">
-                      {fmtMoney(Number(sale.total), settings)}
+                      {fmtMoney(Number(sale.total), settings as any)}
                     </td>
                   </tr>
                 ))}
@@ -339,7 +338,7 @@ export default async function DashboardPage() {
                       </Badge>
                     </td>
                     <td className="text-right font-semibold text-slate-900">
-                      {fmtMoney(Number(inv.total), settings)}
+                      {fmtMoney(Number(inv.total), settings as any)}
                     </td>
                   </tr>
                 ))}
