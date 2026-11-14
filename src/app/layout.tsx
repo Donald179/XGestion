@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { ToastProvider } from "@/components/client";
 import { PwaRegister } from "@/components/pwa";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: { default: "GestionPro – Gestion d'entreprise", template: "%s · GestionPro" },
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="antialiased">
         <ToastProvider>{children}</ToastProvider>
         <PwaRegister />
+        <Analytics />
       </body>
     </html>
   );
