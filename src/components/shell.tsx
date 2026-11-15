@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Bell, Boxes, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, Moon, Package, Receipt, Settings, ShoppingCart, Sun, Truck, UserCog, Users, Wallet, Wrench, X } from "lucide-react";
+import { Xvisio } from "@/components/xvisio";
 
 const ICONS = { LayoutDashboard, Users, Wrench, Package, Boxes, ShoppingCart, FileText, Receipt, Wallet, Truck, BarChart3, Bell, UserCog, Settings } as const;
 type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
@@ -116,6 +117,7 @@ export function AppShell({
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">{children}</main>
       </div>
+      <Xvisio />
     </div>
   );
 }

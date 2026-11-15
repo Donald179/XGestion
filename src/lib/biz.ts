@@ -278,6 +278,7 @@ export type SaleInput = {
   method: s.PayMethod;
   paid: number;
   notes: string | null;
+  expectedTotal?: number;
 };
 
 export async function createSale(tx: Tx, cx: Cx, o: SaleInput) {
@@ -297,6 +298,8 @@ export async function createSale(tx: Tx, cx: Cx, o: SaleInput) {
   });
   if (o.discount > 0 && !priceOverride) throw new UserError("Vous n'êtes pas autorisé à appliquer une remise.");
   const t = computeTotals(lines, o.discount, st);
+  if (o.expectedTotal != null && Math.abs(t.total - o.expectedTotal) > 0.005)
+    throw new UserError("Le total a changé depuis la préparation. Préparez à nouveau la vente pour vérifier le montant.");
   const paid = round2(o.paid);
   if (paid < 0 || paid > t.total + 0.005) throw new UserError("Montant encaissé invalide.");
   const reference = await nextRef(tx, cx.orgId, "sale");

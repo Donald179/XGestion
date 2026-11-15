@@ -39,6 +39,17 @@ const docSchema = z.object({
   discount: z.number().min(0, "Remise invalide."),
   notes: z.string().nullish(),
 });
+const xvisioSaleSchema = z.object({
+  customerId: z.string().uuid().nullable(),
+  lines: z.array(z.object({
+    productId: z.string().uuid(),
+    quantity: z.number().int().min(1).max(100_000),
+    unitPrice: z.number().nonnegative(),
+  })).min(1).max(30),
+  method,
+  paid: z.number().min(0).nullable(),
+  expectedTotal: z.number().nonnegative(),
+});
 
 /* ───────── Stock ───────── */
 export async function stockMovementAction(_: ActionState, fd: FormData) {
@@ -227,6 +238,62 @@ export async function createSaleAction(_: ActionState, fd: FormData) {
         discount: d.discount, method: d.method, paid: d.paid, notes: d.notes || null,
       }),
     );
+    return { message: `Vente ${sale.reference} validée.`, redirect: `/ventes/${sale.id}` };
+  });
+}
+
+export async function createXvisioSaleAction(fd: FormData) {
+  return run(async () => {
+    const ctx = await actCtx("sales.create");
+    let raw: unknown;
+    try {
+      raw = JSON.parse(str(fd, "payload"));
+    } catch {
+      throw new UserError("Brouillon de vente invalide.");
+    }
+    const d = xvisioSaleSchema.parse(raw);
+    if (d.customerId && !can(ctx.role, "customers.view")) {
+      throw new UserError("Vous n'êtes pas autorisé à associer un client à cette vente.");
+    }
+    const sale = await db.transaction(async (tx) => {
+      if (d.customerId) {
+        const [customer] = await tx
+          .select({ id: s.customers.id })
+          .from(s.customers)
+          .where(and(
+            eq(s.customers.id, d.customerId),
+            eq(s.customers.organizationId, ctx.org.id),
+            eq(s.customers.archived, false),
+          ))
+          .for("share");
+        if (!customer) throw new UserError("Le client n'est plus disponible.");
+      }
+
+      const productIds = [...new Set(d.lines.map((line) => line.productId))];
+      const lockedProducts = await tx
+        .select({ id: s.products.id, salePrice: s.products.salePrice, active: s.products.active })
+        .from(s.products)
+        .where(and(eq(s.products.organizationId, ctx.org.id), inArray(s.products.id, productIds)))
+        .for("update");
+      if (lockedProducts.length !== productIds.length || lockedProducts.some((product) => !product.active)) {
+        throw new UserError("Un produit de cette vente n'est plus disponible.");
+      }
+
+      const priceById = new Map(lockedProducts.map((product) => [product.id, product.salePrice]));
+      if (d.lines.some((line) => priceById.get(line.productId) !== line.unitPrice)) {
+        throw new UserError("Un prix a changé depuis la préparation. Préparez à nouveau la vente pour vérifier le montant.");
+      }
+      const result = await biz.createSale(tx, cxOf(ctx), {
+        customerId: d.customerId,
+        lines: d.lines.map(({ productId, quantity }) => ({ productId, quantity })),
+        discount: 0,
+        method: d.method,
+        paid: d.paid ?? d.expectedTotal,
+        notes: "Vente créée via Xvisio",
+        expectedTotal: d.expectedTotal,
+      });
+      return result;
+    });
     return { message: `Vente ${sale.reference} validée.`, redirect: `/ventes/${sale.id}` };
   });
 }

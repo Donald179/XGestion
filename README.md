@@ -97,6 +97,7 @@ Architecture prête pour une file de synchronisation ultérieure (les écritures
 ## Déploiement
 Tout hébergeur Node.js + PostgreSQL (Render, Railway, VPS, Docker…) : définir `DATABASE_URL`, `COOKIE_SECURE=true` (HTTPS), exécuter les migrations
 (`drizzle/0000_init.sql` ou `npx drizzle-kit push`), puis `npm run build && npm start`. Sonde de santé : `GET /api/health`.
+Pour activer l'assistant Xvisio, définir `OPENAI_API_KEY` et, facultativement, `OPENAI_MODEL` (par défaut `gpt-4o-mini`). Les messages et les indicateurs autorisés selon le rôle sont envoyés à OpenAI pour générer les réponses ; les échanges ne sont pas enregistrés par l'application. Les noms de produits et de clients ne sont pas transmis comme catalogue : ils sont rapprochés côté serveur (un nom prononcé dans un message reste toutefois transmis avec ce message). La dictée vocale dépend du navigateur et peut être traitée par son fournisseur. Les ventes préparées par Xvisio ne sont enregistrées qu'après confirmation explicite, puis passent par les règles métier habituelles.
 **Sauvegardes** : `pg_dump -Fc $DATABASE_URL > backup.dump` quotidien (+ rétention), restauration : `pg_restore -c -d $DATABASE_URL backup.dump`. Tester la restauration régulièrement.
 
 ## Fonctionnalités terminées
