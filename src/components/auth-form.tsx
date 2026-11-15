@@ -31,11 +31,11 @@ export function AuthForm({ action, fields, submit, hidden, links }: {
       {fields.map((f) => (
         <div key={f.name}>
           <label htmlFor={f.name} className="label">{translateText(f.label, language)}</label>
-          <input id={f.name} name={f.name} type={f.type ?? "text"} required={f.required ?? true} defaultValue={f.defaultValue} placeholder={f.placeholder} className="input" autoComplete={f.type === "password" ? "current-password" : f.type === "email" ? "email" : "off"} />
+          <input id={f.name} name={f.name} type={f.type ?? "text"} required={f.required ?? true} defaultValue={f.defaultValue} placeholder={f.placeholder} className="input" autoComplete={f.type == "email" ? "email" : f.type == "password" ? "current-password" : f.type == "tel" ? "tel" : "on"} />
         </div>
       ))}
       {state?.error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
-      {state?.ok && !state.redirect && state.message && <p className="break-all rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.message.includes("/reset-password") ? <>Lien de réinitialisation (mode démo, aucun email n&apos;est envoyé) : <Link className="font-semibold underline" href={state.message.slice(state.message.indexOf("/reset-password"))}>ouvrir le lien</Link></> : state.message}</p>}
+      {state?.ok && !state.redirect && state.message && <p className="break-all rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.message.includes("/reset-password") ? <>Lien de réinitialisation généré.</> : state.message}</p>}
       <button type="submit" disabled={pending} className="btn-primary w-full py-2.5">{pending && <Loader2 className="h-4 w-4 animate-spin" />} {translateText(submit, language)}</button>
       {links && <div className="flex flex-wrap justify-between gap-2 text-sm">{links.map((l) => <Link key={l.href} href={l.href} className="text-brand-600 hover:underline">{translateText(l.label, language)}</Link>)}</div>}
     </form>
@@ -70,10 +70,10 @@ export function AuthCard({ title, subtitle, variant = "default", children }: {
         <div className="pointer-events-none absolute -right-28 -top-32 h-96 w-96 rounded-full border border-white/10" />
         <div className="pointer-events-none absolute -bottom-48 -left-36 h-96 w-96 rounded-full border border-white/10" />
         <div className="relative">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-lg font-extrabold text-navy-900 shadow-lg">G</span>
-            <span className="text-lg font-bold tracking-tight">GestionPro</span>
-          </div>
+          <a href="/" className="inline-flex items-center gap-3" aria-label="XGestion - accueil">
+            <img src="/brand/logo.svg" alt="Logo XGestion" className="h-11 w-11 rounded-xl bg-white object-contain p-1 shadow-lg" />
+            <span className="text-lg font-bold tracking-tight">XGestion</span>
+          </a>
           <div className="mt-9 max-w-lg md:mt-24">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
               {isEnglish ? "One platform, more control" : "Une plateforme, plus de maîtrise"}
