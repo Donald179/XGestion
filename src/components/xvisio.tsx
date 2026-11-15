@@ -130,7 +130,12 @@ export function Xvisio() {
       if (typeof data !== "object" || data === null || !("message" in data) || typeof data.message !== "string") {
         throw new Error("Réponse invalide de Xvisio.");
       }
-      setMessages((current) => [...current, { id: Date.now() + 1, role: "assistant", content: data.message }].slice(-16));
+      const assistantMessage: Message = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: data.message,
+      };
+      setMessages((current) => [...current, assistantMessage].slice(-16));
       if ("sale" in data && data.sale && typeof data.sale === "object") {
         const sale = saleDraftSchema.safeParse(data.sale);
         if (!sale.success) throw new Error("Le brouillon de vente reçu est invalide.");
@@ -172,12 +177,13 @@ export function Xvisio() {
         setError(result.error);
         return;
       }
-      setMessages((current) => [...current, {
+      const successMessage: Message = {
         id: Date.now(),
         role: "assistant",
         content: result?.message ?? "Vente enregistrée.",
         href: result?.redirect,
-      }].slice(-16));
+      };
+      setMessages((current) => [...current, successMessage].slice(-16));
       setDraft(null);
       router.refresh();
     } catch (cause) {
@@ -205,7 +211,7 @@ export function Xvisio() {
           role="dialog"
           aria-modal="false"
           aria-label="Discussion avec Xvisio"
-          className="no-print fixed bottom-3 right-3 z-[80] flex h-[min(82vh,680px)] w-[calc(100%_-_1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:bottom-5 sm:right-5"
+          className="no-print fixed bottom-3 right-3 z-[80] flex h-[min(82vh,680px)] w-[calc(100%_-_1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         >
           <header className="flex items-center gap-3 bg-navy-900 px-4 py-3 text-white">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600"><Sparkles className="h-5 w-5" /></div>
@@ -226,11 +232,13 @@ export function Xvisio() {
             )}
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-5 ${message.role === "user" ? "rounded-br-sm bg-brand-600 text-white" : "rounded-bl-sm bg-white text-slate-800 shadow-sm ring-1 ring-slate-200"}`}>
+                <div className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm leading-5 ${message.role === "user" ? "rounded-br-sm bg-brand-600 text-white" : "rounded-bl-sm bg-white text-slate-800 shadow-sm"}`}>
                   <p className="whitespace-pre-wrap">{message.content}</p>
                   {message.href && <Link href={message.href} className="mt-1 inline-block font-medium text-brand-600 underline">Voir la vente</Link>}
                   {message.role === "assistant" && (
-                    <button type="button" onClick={() => speak(message.content)} aria-label="Lire la réponse à voix haute" title="Lire à voix haute" className="mt-1 block rounded p-1 text-slate-500 hover:bg-slate-100"><Volume2 className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => speak(message.content)} aria-label="Lire la réponse à voix haute" title="Lire à voix haute" className="mt-1 block rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+                      <Volume2 className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -286,18 +294,18 @@ export function Xvisio() {
                 aria-label="Votre message à Xvisio"
                 className="input max-h-24 min-h-10 resize-y"
               />
-              <button type="button" disabled={busy} onClick={() => listening ? recognition.current?.abort() : startVoiceInput()} aria-label={listening ? "Arrêter la dictée" : "Dicter un message"} title={listening ? "Arrêter la dictée" : "Dicter un message"} className="rounded-lg border border-slate-300 p-2.5 text-slate-600 hover:bg-slate-100 disabled:opacity-50">
+              <button type="button" disabled={busy} onClick={() => listening ? recognition.current?.abort() : startVoiceInput()} aria-label={listening ? "Arrêter la dictée" : "Dicter un message"} title={listening ? "Arrêter la dictée" : "Dicter un message"} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-slate-700 hover:bg-slate-100 disabled:opacity-60">
                 {listening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
               </button>
-              <button type="submit" disabled={busy || listening || !input.trim()} aria-label="Envoyer" title="Envoyer" className="rounded-lg bg-brand-600 p-2.5 text-white hover:bg-brand-700 disabled:opacity-50">
+              <button type="submit" disabled={busy || listening || !input.trim()} aria-label="Envoyer" title="Envoyer" className="rounded-lg bg-brand-600 p-2.5 text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300">
                 {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </button>
             </div>
-            <p className="mt-2 text-[10px] leading-4 text-slate-400">La dictée dépend du navigateur et peut être traitée par son fournisseur. Les messages et les indicateurs autorisés sont traités par OpenAI.</p>
+            <p className="mt-2 text-[10px] leading-4 text-slate-400">La dictée dépend du navigateur et peut être traitée par son fournisseur. Les messages et les indicateurs autorisés sont restreints à ce composant.</p>
           </form>
         </section>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} aria-label="Ouvrir Xvisio" title="Discuter avec Xvisio" className="no-print fixed bottom-5 right-5 z-[80] flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Ouvrir Xvisio" title="Discuter avec Xvisio" className="no-print fixed bottom-5 right-5 z-[80] flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700">
           <MessageCircle className="h-6 w-6" />
         </button>
       )}
