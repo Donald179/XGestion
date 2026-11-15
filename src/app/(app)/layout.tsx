@@ -3,11 +3,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notifications, licenses } from "@/db/schema";
 import { AppShell } from "@/components/shell";
+import { PwaRegister } from "@/components/pwa";
 import { pageCtx } from "@/lib/auth";
 import { syncAlerts } from "@/lib/biz";
 import { NAV, ROLE_LABELS, can } from "@/lib/permissions";
 import { logoutAction, switchOrgAction } from "@/app/actions/auth";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       logout={logoutAction}
     >
       {children}
+      <PwaRegister />
     </AppShell>
   );
 }

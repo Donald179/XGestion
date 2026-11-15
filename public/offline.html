@@ -1,6 +1,68 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hors connexion</title>
-<style>body{font-family:system-ui,sans-serif;background:#0b1b3b;color:#fff;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:1rem;text-align:center}
-.c{max-width:420px}h1{font-size:1.4rem}p{color:#cbd5e1;line-height:1.5}button{background:#1f5fd6;color:#fff;border:0;border-radius:8px;padding:.7rem 1.2rem;font-size:1rem;cursor:pointer}</style></head>
-<body><div class="c"><h1>Vous êtes hors connexion</h1>
-<p>GestionPro a besoin d'Internet pour enregistrer vos ventes, paiements et mouvements de stock. Aucune opération n'est enregistrée tant que la connexion n'est pas rétablie.</p>
-<button onclick="location.reload()">Réessayer</button></div></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1b3b">
+  <title>Saisie hors connexion — XGestion</title>
+  <style>
+    *{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;color:#0f172a;margin:0;padding:1rem;min-height:100vh}
+    main{max-width:680px;margin:2rem auto;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:clamp(1rem,4vw,2rem);box-shadow:0 12px 32px #0f172a12}
+    h1{font-size:1.5rem;margin:.2rem 0}.intro{color:#475569;line-height:1.55}.status{border-radius:8px;padding:.7rem .85rem;background:#fff7ed;color:#9a3412;font-size:.9rem}
+    .status.online{background:#ecfdf5;color:#047857}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}.field{display:flex;flex-direction:column;gap:.35rem}.wide{grid-column:1/-1}label{font-size:.86rem;font-weight:600;color:#334155}input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:.7rem;font:inherit;background:white}textarea{min-height:88px;resize:vertical}
+    button,.link{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:#1f5fd6;color:#fff;padding:.7rem 1rem;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}.secondary{background:#e2e8f0;color:#1e293b}.remove{background:transparent;color:#b91c1c;padding:.35rem;font-size:.8rem}
+    .actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}.queue{padding:0;list-style:none}.queue li{display:flex;align-items:center;justify-content:space-between;gap:.6rem;border-top:1px solid #e2e8f0;padding:.7rem 0;font-size:.9rem}.muted{color:#64748b;font-size:.85rem}.error{color:#b91c1c;font-size:.8rem}
+    @media(max-width:520px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Saisie hors connexion</h1>
+  <p class="intro">Vous pouvez préparer des <strong>fiches clients</strong> sans réseau. Elles sont conservées sur cet appareil et envoyées à votre entreprise quand la connexion revient. Les ventes, paiements et stocks ne sont pas encore disponibles hors ligne.</p>
+  <p id="status" class="status" role="status">Vérification de la connexion…</p>
+  <form id="customer-form" class="grid">
+    <div class="field wide"><label for="name">Nom du client *</label><input id="name" name="name" required minlength="2" maxlength="200" autocomplete="name"></div>
+    <div class="field"><label for="type">Type</label><select id="type" name="type"><option value="particulier">Particulier</option><option value="entreprise">Entreprise</option></select></div>
+    <div class="field"><label for="phone">Téléphone</label><input id="phone" name="phone" type="tel" maxlength="80" autocomplete="tel"></div>
+    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" maxlength="320" autocomplete="email"></div>
+    <div class="field"><label for="address">Adresse</label><input id="address" name="address" maxlength="1000" autocomplete="street-address"></div>
+    <div class="field wide"><label for="notes">Notes</label><textarea id="notes" name="notes" maxlength="4000"></textarea></div>
+    <div class="actions wide"><button type="submit">Enregistrer sur cet appareil</button><button type="button" id="sync" class="secondary">Synchroniser maintenant</button><a class="link secondary" href="/clients">Retour à XGestion</a></div>
+  </form>
+  <section aria-labelledby="queue-heading">
+    <h2 id="queue-heading">En attente de synchronisation <span id="count">(0)</span></h2>
+    <p id="empty" class="muted">Aucune fiche en attente.</p>
+    <ul id="queue" class="queue"></ul>
+  </section>
+</main>
+<script>
+(() => {
+  const DB_NAME = "xgestion-offline", STORE = "customers";
+  const status = document.getElementById("status"), list = document.getElementById("queue"), count = document.getElementById("count"), empty = document.getElementById("empty");
+  function openDb() { return new Promise((resolve, reject) => { const r = indexedDB.open(DB_NAME, 1); r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE, { keyPath: "id" }); }; r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); }
+  async function all() { const db = await openDb(); const rows = await new Promise((resolve, reject) => { const r = db.transaction(STORE).objectStore(STORE).getAll(); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); db.close(); return rows; }
+  async function save(item) { const db = await openDb(); await new Promise((resolve, reject) => { const tx = db.transaction(STORE, "readwrite"); tx.objectStore(STORE).put(item); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); }); db.close(); }
+  async function remove(id) { const db = await openDb(); await new Promise((resolve, reject) => { const tx = db.transaction(STORE, "readwrite"); tx.objectStore(STORE).delete(id); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); }); db.close(); }
+  async function render() {
+    const rows = await all(); list.replaceChildren(); count.textContent = `(${rows.length})`; empty.hidden = rows.length > 0;
+    rows.forEach((item) => { const li = document.createElement("li"), text = document.createElement("span"), removeButton = document.createElement("button"); text.textContent = `${item.name} — ${item.type === "entreprise" ? "Entreprise" : "Particulier"}`; removeButton.type = "button"; removeButton.className = "remove"; removeButton.textContent = "Supprimer"; removeButton.addEventListener("click", async () => { await remove(item.id); await render(); }); li.append(text, removeButton); if (item.syncError) { const error = document.createElement("span"); error.className = "error"; error.textContent = item.syncError; li.append(error); } list.append(li); });
+  }
+  async function askSync() {
+    if (!navigator.onLine) { status.textContent = "Hors connexion : vos fiches restent enregistrées sur cet appareil."; status.className = "status"; return; }
+    status.textContent = "Connexion disponible. Synchronisation des fiches en attente…";
+    try { const registration = await navigator.serviceWorker?.ready; if (registration?.sync) await registration.sync.register("xgestion-offline-queue"); else registration?.active?.postMessage({ type: "XGESTION_SYNC_OFFLINE_QUEUE" }); if (!registration) status.textContent = "Service de synchronisation indisponible. Réessayez depuis l'application."; }
+    catch { status.textContent = "Synchronisation impossible pour le moment. Vos fiches restent enregistrées sur cet appareil."; }
+  }
+  document.getElementById("customer-form").addEventListener("submit", async (event) => {
+    event.preventDefault(); const data = new FormData(event.currentTarget);
+    const item = { id: crypto.randomUUID(), name: String(data.get("name")).trim(), type: data.get("type"), phone: String(data.get("phone")).trim() || null, email: String(data.get("email")).trim() || null, address: String(data.get("address")).trim() || null, notes: String(data.get("notes")).trim() || null };
+    await save(item); event.currentTarget.reset(); await render(); status.textContent = "Fiche enregistrée sur cet appareil. Elle sera synchronisée dès que possible."; status.className = navigator.onLine ? "status online" : "status"; if (navigator.onLine) askSync();
+  });
+  document.getElementById("sync").addEventListener("click", askSync);
+  window.addEventListener("online", askSync); window.addEventListener("offline", () => { status.textContent = "Hors connexion : vos fiches restent enregistrées sur cet appareil."; status.className = "status"; });
+  navigator.serviceWorker?.addEventListener("message", async (event) => { if (event.data?.type !== "XGESTION_OFFLINE_SYNC") return; const results = event.data; if (results.failed) status.textContent = `${results.synced} fiche(s) synchronisée(s). ${results.failed} restent en attente; vérifiez votre session ou les informations saisies.`; else status.textContent = `${results.synced} fiche(s) synchronisée(s) avec succès.`; status.className = "status online"; await render(); });
+  render().then(() => { status.textContent = navigator.onLine ? "En ligne : les fiches en attente seront synchronisées." : "Hors connexion : vos fiches restent enregistrées sur cet appareil."; status.className = navigator.onLine ? "status online" : "status"; if (navigator.onLine) askSync(); });
+})();
+</script>
+</body>
+</html>
