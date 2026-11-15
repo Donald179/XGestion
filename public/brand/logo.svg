@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">XGestion</title>
+  <rect width="512" height="512" rx="64" fill="#fff"/>
+  <g transform="translate(0 8)">
+    <path fill="#082b69" d="M80 118h111c8 0 13 3 19 10l60 70 64-72c5-6 11-8 20-8h104L309 286l99 111H295l-76-86-128 145 116-176L80 118zm119 0 46 54 46-54h-92zm-9 134 39-48-68-79h-43l86 102-14 25z"/>
+    <path fill="#00ad5e" d="M50 403c73-83 140-134 221-163 53-19 108-22 158-57l-28-19 91-31-9 94-20-24c-62 60-119 77-176 91-75 18-135 52-194 109H50z"/>
+    <path fill="#00ad5e" d="M310 324c0-5 3-9 8-11l37-12c6-2 12 2 12 9v82l-57-67v-1zm78-47c0-5 3-9 8-11l37-12c6-2 12 2 12 9v129h-57V277z"/>
+  </g>
+</svg>

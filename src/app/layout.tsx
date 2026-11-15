@@ -8,11 +8,15 @@ import { LanguageProvider } from "@/components/language";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
-  title: { default: "GestionPro – Gestion d'entreprise", template: "%s · GestionPro" },
+  title: { default: "XGestion – Gestion d'entreprise", template: "%s · XGestion" },
   description: "Plateforme SaaS de gestion : prestations, ventes, stocks, facturation et finances.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
-  appleWebApp: { capable: true, title: "GestionPro", statusBarStyle: "default" },
+  icons: {
+    icon: [{ url: "/brand/logo.svg", type: "image/svg+xml" }],
+    shortcut: "/brand/logo.svg",
+    apple: "/brand/logo.svg",
+  },
+  appleWebApp: { capable: true, title: "XGestion", statusBarStyle: "default" },
 };
 export const viewport: Viewport = { themeColor: "#0b1b3b", width: "device-width", initialScale: 1 };
 

@@ -1,4 +1,2 @@
-## PWA et mode hors connexion
-L'application peut être installée comme PWA. La page `/offline.html` permet maintenant de préparer des **fiches clients** sans connexion : elles sont conservées dans IndexedDB sur l'appareil puis envoyées automatiquement au retour du réseau (ou via « Synchroniser maintenant »). La synchronisation est protégée par la session et la permission `customers.manage`, liée à l'entreprise active ; les UUID générés localement rendent les nouvelles tentatives idempotentes. Les fiches restent dans la file si le serveur ne confirme pas leur enregistrement.
-
-Cette première étape ne met pas en cache les pages métier ni les données personnelles du serveur. **Les modifications de clients existants, ventes, paiements, stocks, devis et factures ne sont pas encore disponibles hors ligne.** Une synchronisation en arrière-plan dépend du navigateur ; la page hors ligne et l'application déclenchent également une tentative au retour de la connexion.
+## Logo de marque
+Le logo XGestion fourni est disponible dans `public/brand/logo.svg`. Il est utilisé comme favicon/icone d’onglet du navigateur, icône de la PWA, dans la barre latérale et dans l’en-tête mobile, ainsi que sur les écrans de connexion et d’inscription. Après déploiement, actualisez le navigateur (ou videz son cache) si l’ancienne icône reste affichée.
