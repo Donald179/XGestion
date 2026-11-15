@@ -119,7 +119,11 @@ export async function POST(request: Request) {
   };
 
   if (financePermission) {
-    const overview = await getDashboard(ctx.org.id, { from: periodStart, to: currentDate }, ctx.settings.timezone);
+    const overview = await getDashboard(
+      ctx.org.id,
+      { period: "custom", from: periodStart, to: currentDate },
+      ctx.settings.timezone,
+    );
     businessSummary = {
       period: `${periodStart} au ${currentDate}`,
       chiffreAffaires: overview.ca,
@@ -163,10 +167,10 @@ export async function POST(request: Request) {
     `Indicateurs autorisés : ${JSON.stringify(businessSummary)}.`,
     "Les créances sont le solde actuel ; le nombre de clients, le nombre de produits actifs et les alertes de stock décrivent l'état actuel, pas seulement la période.",
     salesPermission
-      ? "Si l'utilisateur demande explicitement de préparer une vente, retourne sale avec les produits, quantités, client éventuellement cité, mode et montant encaissé éventuellement cité. Copie les noms de produits et le nom du client tels qu'indiqués par l'utilisateur. En cas de vente préparée, ne prétends jamais qu'elle est enregistrée : l'utilisateur devra la vérifier et la confirmer dans l'application. Aucun outil n'enregistre de vente automatiquement."
+      ? "Si l'utilisateur demande explicitement de préparer une vente, retourne sale avec les produits, quantités, client éventuellement cité, mode et montant encaissé éventuellement cité."
       : "Ce rôle n'a pas le droit de créer une vente. Si on te le demande, explique-le et retourne sale à null.",
     "N'inclus jamais sale si la demande n'est pas clairement une création de vente.",
-    "Retourne exclusivement le JSON demandé. Pour une vente sans indication de paiement, paid doit être null; le mode par défaut est especes. Pour un client de passage, customerName doit être null.",
+    "Retourne exclusivement le JSON demandé. Pour une vente sans indication de paiement, paid doit être null; le mode par défaut est especes. Pour un client de passage, customerName doit être null; pour un client nommé dans la demande, indique son nom exact.",
   ].join("\n");
 
   let openAIResponse: Response;
