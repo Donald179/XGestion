@@ -3,6 +3,7 @@
 import { createContext, useActionState, useCallback, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Info, Loader2, Search, X } from "lucide-react";
+import { translateText, useLanguage } from "@/components/language";
 
 type ActionState = { ok?: boolean; error?: string; message?: string; redirect?: string; token?: number } | null;
 type ServerAction = (prev: ActionState, fd: FormData) => Promise<ActionState>;
@@ -179,6 +180,7 @@ export function FormDialog({ title, description, trigger, triggerClass = "btn-pr
 export function ActionButton({ action, hidden, label, confirm, className = "btn-outline btn-sm", prompt }: {
   action: ServerAction; hidden?: Record<string, string>; label: ReactNode; confirm?: string; className?: string; prompt?: { name: string; message: string };
 }) {
+  const { language } = useLanguage();
   const [pending, start] = useTransition();
   const toast = useToast();
   const router = useRouter();
@@ -188,11 +190,11 @@ export function ActionButton({ action, hidden, label, confirm, className = "btn-
       disabled={pending}
       className={className}
       onClick={() => {
-        if (confirm && !window.confirm(confirm)) return;
+        if (confirm && !window.confirm(translateText(confirm, language))) return;
         const fd = new FormData();
         Object.entries(hidden ?? {}).forEach(([k, v]) => fd.set(k, v));
         if (prompt) {
-          const v = window.prompt(prompt.message);
+          const v = window.prompt(translateText(prompt.message, language));
           if (!v || !v.trim()) return;
           fd.set(prompt.name, v.trim());
         }

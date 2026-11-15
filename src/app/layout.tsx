@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ToastProvider } from "@/components/client";
 import { PwaRegister } from "@/components/pwa";
+import { LanguageProvider } from "@/components/language";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
@@ -28,9 +29,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="antialiased">
-        <ToastProvider>{children}</ToastProvider>
-        <PwaRegister />
-        <Analytics />
+        <LanguageProvider>
+          <ToastProvider>{children}</ToastProvider>
+          <PwaRegister />
+          <Analytics />
+        </LanguageProvider>
       </body>
     </html>
   );

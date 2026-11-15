@@ -8,7 +8,7 @@ export const metadata = { title: "Inscription" };
 export default async function RegisterPage() {
   if (await loadCtx()) redirect("/dashboard");
   return (
-    <AuthCard title="Créer votre compte" subtitle="Étape 1/2 : vos identifiants. Vous créerez ensuite votre entreprise.">
+    <AuthCard title="Créer votre compte" subtitle="Étape 1/2 : vos identifiants. Vous créerez ensuite votre entreprise." variant="register">
       <AuthForm
         action={registerAction}
         submit="Créer mon compte"

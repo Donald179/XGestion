@@ -8,7 +8,7 @@ export const metadata = { title: "Connexion" };
 export default async function LoginPage() {
   if (await loadCtx()) redirect("/dashboard");
   return (
-    <AuthCard title="Connexion" subtitle="Accédez à votre espace de gestion">
+    <AuthCard title="Connexion" subtitle="Accédez à votre espace de gestion" variant="login">
       <AuthForm
         action={loginAction}
         submit="Se connecter"

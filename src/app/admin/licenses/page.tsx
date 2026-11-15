@@ -1,4 +1,5 @@
 import { createLicenseAction, getLicensesWithOrgs } from "@/db/licenses";
+import { LanguageToggle } from "@/components/language";
 
 export const dynamic = "force-dynamic";
 
@@ -7,9 +8,12 @@ export default async function AdminLicensesPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Licences SaaS</h1>
-        <p className="text-sm text-gray-500">Générez et suivez les clés d'activation de vos clients.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gestion des Licences SaaS</h1>
+          <p className="text-sm text-gray-500">Générez et suivez les clés d'activation de vos clients.</p>
+        </div>
+        <LanguageToggle />
       </div>
 
       {/* Formulaire de génération */}

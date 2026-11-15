@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Bell, Boxes, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, Moon, Package, Receipt, Settings, ShoppingCart, Sun, Truck, UserCog, Users, Wallet, Wrench, X } from "lucide-react";
 import { Xvisio } from "@/components/xvisio";
+import { LanguageToggle } from "@/components/language";
 
 const ICONS = { LayoutDashboard, Users, Wrench, Package, Boxes, ShoppingCart, FileText, Receipt, Wallet, Truck, BarChart3, Bell, UserCog, Settings } as const;
 type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
@@ -94,6 +95,7 @@ export function AppShell({
             </form>
           ) : <span className="hidden text-sm font-semibold text-slate-700 sm:block">{orgName}</span>}
           <div className="ml-auto flex items-center gap-2">
+            <LanguageToggle />
             <ThemeToggle />
             <Link href="/notifications" aria-label="Notifications" className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100">
               <Bell className="h-5 w-5" />
