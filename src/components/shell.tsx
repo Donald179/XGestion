@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Bell, Boxes, ChevronDown, FileText, LayoutDashboard, LogOut, Menu, Moon, Package, Receipt, Settings, ShoppingCart, Sun, Truck, UserCog, Users, Wallet, Wrench, X } from "lucide-react";
-import { Xvisio } from "@/components/xvisio";
 import { LanguageToggle } from "@/components/language";
 
 const ICONS = { LayoutDashboard, Users, Wrench, Package, Boxes, ShoppingCart, FileText, Receipt, Wallet, Truck, BarChart3, Bell, UserCog, Settings } as const;
@@ -62,7 +61,7 @@ export function AppShell({
           const active = path === n.href || path.startsWith(n.href + "/");
           return (
             <li key={n.href}>
-              <Link href={n.href} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${active ? "bg-brand-600 text-white shadow" : "hover:bg-white/10 hover:text-white"}`}>
+              <Link href={n.href} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${active ? "bg-brand-600 text-white shadow" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}>
                 <Icon className="h-[18px] w-[18px]" /> {n.label}
                 {n.icon === "Bell" && unread > 0 && <span className="ml-auto rounded-full bg-orange-500 px-1.5 text-[10px] font-bold text-white">{unread}</span>}
               </Link>
@@ -99,7 +98,7 @@ export function AppShell({
             <ThemeToggle />
             <Link href="/notifications" aria-label="Notifications" className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100">
               <Bell className="h-5 w-5" />
-              {unread > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{unread > 99 ? "99+" : unread}</span>}
+              {unread > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
             </Link>
             <div className="relative">
               <button onClick={() => setMenu((m) => !m)} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100">
@@ -119,7 +118,6 @@ export function AppShell({
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">{children}</main>
       </div>
-      <Xvisio />
     </div>
   );
 }
