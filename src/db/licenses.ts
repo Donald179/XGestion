@@ -14,6 +14,20 @@ function generateKey(): string {
   return `XGEST-${p1}-${p2}-${p3}`;
 }
 
+function getLicenseId(formData: FormData): string {
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    throw new Error("Licence introuvable.");
+  }
+  return id;
+}
+
+function revalidateLicensePages() {
+  revalidatePath("/admin/licenses");
+  revalidatePath("/admin");
+  revalidatePath("/parametres");
+}
+
 export async function createLicenseAction(formData: FormData) {
   await requireSuperAdmin();
   const rawPlanType = String(formData.get("planType") ?? "mensuel");
@@ -23,8 +37,25 @@ export async function createLicenseAction(formData: FormData) {
   const newKey = generateKey();
 
   await db.insert(licenses).values({ licenseKey: newKey, planType: rawPlanType, maxUsers: rawMaxUsers, isActive: true });
-  revalidatePath("/admin/licenses");
-  revalidatePath("/admin");
+  revalidateLicensePages();
+}
+
+export async function setLicenseStatusAction(formData: FormData) {
+  await requireSuperAdmin();
+  const id = getLicenseId(formData);
+  const rawIsActive = String(formData.get("isActive") ?? "");
+  if (rawIsActive !== "true" && rawIsActive !== "false") throw new Error("Statut de licence invalide.");
+
+  await db.update(licenses).set({ isActive: rawIsActive === "true" }).where(eq(licenses.id, id));
+  revalidateLicensePages();
+}
+
+export async function deleteLicenseAction(formData: FormData) {
+  await requireSuperAdmin();
+  const id = getLicenseId(formData);
+
+  await db.delete(licenses).where(eq(licenses.id, id));
+  revalidateLicensePages();
 }
 
 export async function getLicensesWithOrgs() {
