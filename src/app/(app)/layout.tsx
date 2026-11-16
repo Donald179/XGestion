@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { and, eq, sql } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { AppShell } from "@/components/shell";
+import { LicenseGate } from "@/components/license-gate";
 import { PwaRegister } from "@/components/pwa";
 import { pageCtx } from "@/lib/auth";
 import { syncAlerts } from "@/lib/biz";
@@ -15,14 +15,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await pageCtx();
-
   const licenseStatus = await checkOrganizationLicense(ctx.org.id);
+  const licenseExpired = !licenseStatus.valid;
 
-  // Ne pas rediriger vers /parametres si la licence est absente : cela provoque une boucle
-  // de redirections sur la page de paramètres elle-même, qui est précisément celle conçue
-  // pour permettre l'activation d'une licence. On laisse l'utilisateur accéder à cette page
-  // et on affiche le reste de l'application sans bloquer complètement l'accès.
-  if (!licenseStatus.valid) {
+  if (licenseExpired) {
     console.warn("Aucune licence active pour l'organisation", {
       orgId: ctx.org.id,
       message: licenseStatus.message,
@@ -51,7 +47,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       switchOrg={switchOrgAction}
       logout={logoutAction}
     >
-      {children}
+      <LicenseGate expired={licenseExpired}>{children}</LicenseGate>
       <PwaRegister />
     </AppShell>
   );
