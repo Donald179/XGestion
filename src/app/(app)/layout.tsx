@@ -17,8 +17,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await pageCtx();
 
   const licenseStatus = await checkOrganizationLicense(ctx.org.id);
+
+  // Ne pas rediriger vers /parametres si la licence est absente : cela provoque une boucle
+  // de redirections sur la page de paramètres elle-même, qui est précisément celle conçue
+  // pour permettre l'activation d'une licence. On laisse l'utilisateur accéder à cette page
+  // et on affiche le reste de l'application sans bloquer complètement l'accès.
   if (!licenseStatus.valid) {
-    redirect("/parametres");
+    console.warn("Aucune licence active pour l'organisation", {
+      orgId: ctx.org.id,
+      message: licenseStatus.message,
+    });
   }
 
   await syncAlerts(ctx.org.id, ctx.settings.timezone).catch((e) => console.error("syncAlerts", e));
