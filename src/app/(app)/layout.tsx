@@ -1,45 +1,35 @@
 import type { ReactNode } from "react";
 import { and, eq, sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { notifications, licenses } from "@/db/schema";
+import { notifications } from "@/db/schema";
 import { AppShell } from "@/components/shell";
 import { PwaRegister } from "@/components/pwa";
 import { pageCtx } from "@/lib/auth";
 import { syncAlerts } from "@/lib/biz";
 import { NAV, ROLE_LABELS, can } from "@/lib/permissions";
 import { logoutAction, switchOrgAction } from "@/app/actions/auth";
+import { checkOrganizationLicense } from "@/db/licenses";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await pageCtx();
 
-  // 1. Récupérer la licence de l'organisation active
-  const [license] = await db
-    .select()
-    .from(licenses)
-    .where(eq(licenses.organizationId, ctx.org.id))
-    .limit(1);
-
-  const now = new Date();
-  const isExpired = license?.expiresAt ? new Date(license.expiresAt) < now : true;
-
-  // 2. Si aucune licence ou si la période d'essai/licence est expirée
-  // On autorise quand même l'accès à la page des paramètres pour qu'il puisse entrer un code !
-  // (Vous pouvez affiner selon la route active)
-  if (!license || (isExpired && !ctx)) {
-    // Redirection vers une page ou blocage (ex: vers les paramètres)
+  const licenseStatus = await checkOrganizationLicense(ctx.org.id);
+  if (!licenseStatus.valid) {
+    redirect("/parametres");
   }
 
   await syncAlerts(ctx.org.id, ctx.settings.timezone).catch((e) => console.error("syncAlerts", e));
-  
+
   const [{ n }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(notifications)
     .where(and(eq(notifications.userId, ctx.user.id), eq(notifications.organizationId, ctx.org.id), eq(notifications.read, false)));
-  
+
   const nav = NAV.filter((i) => can(ctx.role, i.perm)).map(({ href, label, icon }) => ({ href, label, icon }));
-  
+
   return (
     <AppShell
       nav={nav}
