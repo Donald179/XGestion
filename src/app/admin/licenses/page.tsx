@@ -1,6 +1,7 @@
 import { createLicenseAction, getLicensesWithOrgs } from "@/db/licenses";
 import { LanguageToggle } from "@/components/language";
 import { requireSuperAdmin } from "@/lib/super-admin";
+import { LicenseActions } from "./license-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function AdminLicensesPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead><tr className="border-b border-gray-100 bg-gray-50 text-gray-600">
-              <th className="p-4 font-medium">Clé de licence</th><th className="p-4 font-medium">Organisation liée</th><th className="p-4 font-medium">Plan</th><th className="p-4 font-medium">Statut</th><th className="p-4 font-medium">Expiration</th>
+              <th className="p-4 font-medium">Clé de licence</th><th className="p-4 font-medium">Organisation liée</th><th className="p-4 font-medium">Plan</th><th className="p-4 font-medium">Statut</th><th className="p-4 font-medium">Expiration</th><th className="p-4 text-center font-medium">Actions</th>
             </tr></thead>
             <tbody className="divide-y divide-gray-100 text-gray-700">
               {allLicenses.map((l) => (
@@ -52,9 +53,10 @@ export default async function AdminLicensesPage() {
                   <td className="p-4 text-xs font-semibold uppercase"><span className="rounded bg-gray-100 px-2 py-1">{l.planType}</span></td>
                   <td className="p-4"><span className={`rounded px-2 py-1 text-xs font-medium ${l.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{l.isActive ? "Active" : "Inactive"}</span></td>
                   <td className="p-4 text-gray-500">{l.expiresAt ? new Date(l.expiresAt).toLocaleDateString("fr-FR") : "Illimitée"}</td>
+                  <td className="p-4"><LicenseActions id={l.id} isActive={l.isActive} licenseKey={l.licenseKey} /></td>
                 </tr>
               ))}
-              {allLicenses.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-gray-400">Aucune licence générée pour le moment.</td></tr>}
+              {allLicenses.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-400">Aucune licence générée pour le moment.</td></tr>}
             </tbody>
           </table>
         </div>
