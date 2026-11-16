@@ -33,10 +33,13 @@ export default async function SettingsPage() {
 
   const isTrial = currentLicense?.planType?.includes("essai");
 
+  const hasExpiry = Boolean(currentLicense?.expiresAt);
+  const isExpired = hasExpiry && new Date(currentLicense.expiresAt).getTime() < Date.now();
+
   // Calcul du décompte des jours restants
   let remainingDays = 0;
-  if (currentLicense?.expiresAt) {
-    const diffTime = new Date(currentLicense.expiresAt).getTime() - new Date().getTime();
+  if (currentLicense?.expiresAt && !isExpired) {
+    const diffTime = new Date(currentLicense.expiresAt).getTime() - Date.now();
     remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (remainingDays < 0) remainingDays = 0;
   }
@@ -82,8 +85,8 @@ export default async function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-lg">
             <div>
               <p className="text-xs text-slate-500 uppercase font-semibold">Statut actuel</p>
-              <p className={`font-medium mt-1 ${currentLicense?.isActive && remainingDays > 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                {currentLicense?.isActive && remainingDays > 0 ? (isTrial ? "⏳ Essai gratuit" : "✅ Actif") : "❌ Expiré"}
+              <p className={`font-medium mt-1 ${currentLicense?.isActive && !isExpired ? "text-emerald-600" : "text-rose-600"}`}>
+                {currentLicense?.isActive && !isExpired ? (isTrial ? "⏳ Essai gratuit" : "✅ Actif") : "❌ Expiré"}
               </p>
             </div>
             <div>
