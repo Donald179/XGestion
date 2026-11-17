@@ -15,7 +15,17 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const ctx = await pageCtx();
-  const licenseStatus = await checkOrganizationLicense(ctx.org.id);
+
+  // These independent checks were previously awaited one after another on every page visit.
+  const [licenseStatus, [, [{ n }]]] = await Promise.all([
+    checkOrganizationLicense(ctx.org.id),
+    Promise.all([
+      syncAlerts(ctx.org.id, ctx.settings.timezone).catch((e) => console.error("syncAlerts", e)),
+      db.select({ n: sql<number>`count(*)::int` })
+        .from(notifications)
+        .where(and(eq(notifications.userId, ctx.user.id), eq(notifications.organizationId, ctx.org.id), eq(notifications.read, false))),
+    ]),
+  ]);
   const licenseExpired = !licenseStatus.valid;
 
   if (licenseExpired) {
@@ -24,13 +34,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       message: licenseStatus.message,
     });
   }
-
-  await syncAlerts(ctx.org.id, ctx.settings.timezone).catch((e) => console.error("syncAlerts", e));
-
-  const [{ n }] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(notifications)
-    .where(and(eq(notifications.userId, ctx.user.id), eq(notifications.organizationId, ctx.org.id), eq(notifications.read, false)));
 
   const nav = NAV.filter((i) => can(ctx.role, i.perm)).map(({ href, label, icon }) => ({ href, label, icon }));
 
