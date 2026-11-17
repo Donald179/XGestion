@@ -112,7 +112,7 @@ export const customers = pgTable(
     archived: boolean("archived").notNull().default(false),
     createdAt: createdAt(),
   },
-  (t) => [index("cust_org").on(t.organizationId)],
+  (t) => [index("cust_org").on(t.organizationId), index("cust_org_type").on(t.organizationId, t.type, t.archived)],
 );
 
 export const suppliers = pgTable(
@@ -129,7 +129,7 @@ export const suppliers = pgTable(
     archived: boolean("archived").notNull().default(false),
     createdAt: createdAt(),
   },
-  (t) => [index("sup_org").on(t.organizationId)],
+  (t) => [index("sup_org").on(t.organizationId), index("sup_org_archived").on(t.organizationId, t.archived)],
 );
 
 /* ───────── Catalogue & stock ───────── */
@@ -141,7 +141,7 @@ export const categories = pgTable(
     name: text("name").notNull(),
     archived: boolean("archived").notNull().default(false),
   },
-  (t) => [index("cat_org").on(t.organizationId)],
+  (t) => [index("cat_org").on(t.organizationId), index("cat_org_archived").on(t.organizationId, t.archived)],
 );
 
 export const products = pgTable(
@@ -163,7 +163,7 @@ export const products = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("prod_sku").on(t.organizationId, t.sku), index("prod_org").on(t.organizationId)],
+  (t) => [uniqueIndex("prod_sku").on(t.organizationId, t.sku), index("prod_org").on(t.organizationId), index("prod_org_active").on(t.organizationId, t.active, t.quantity)],
 );
 
 export const stockLocations = pgTable(
@@ -174,7 +174,7 @@ export const stockLocations = pgTable(
     name: text("name").notNull(),
     isDefault: boolean("is_default").notNull().default(false),
   },
-  (t) => [index("loc_org").on(t.organizationId)],
+  (t) => [index("loc_org").on(t.organizationId), index("loc_org_default").on(t.organizationId, t.isDefault)],
 );
 
 export const stockMovements = pgTable(
@@ -192,7 +192,7 @@ export const stockMovements = pgTable(
     userId: uuid("user_id").references(() => profiles.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [index("sm_org_prod").on(t.organizationId, t.productId), index("sm_org_date").on(t.organizationId, t.createdAt)],
+  (t) => [index("sm_org_prod").on(t.organizationId, t.productId), index("sm_org_date").on(t.organizationId, t.createdAt), index("sm_prod_loc").on(t.productId, t.locationId)],
 );
 
 /* ───────── Prestations ───────── */
@@ -207,7 +207,7 @@ export const services = pgTable(
     durationMinutes: integer("duration_minutes"),
     active: boolean("active").notNull().default(true),
   },
-  (t) => [index("svc_org").on(t.organizationId)],
+  (t) => [index("svc_org").on(t.organizationId), index("svc_org_active").on(t.organizationId, t.active)],
 );
 
 export const serviceOrders = pgTable(
@@ -231,7 +231,7 @@ export const serviceOrders = pgTable(
     createdAt: createdAt(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("so_ref").on(t.organizationId, t.reference), index("so_org").on(t.organizationId, t.status)],
+  (t) => [uniqueIndex("so_ref").on(t.organizationId, t.reference), index("so_org").on(t.organizationId, t.status), index("so_org_assignee").on(t.organizationId, t.assigneeId, t.status), index("so_org_due").on(t.organizationId, t.dueDate)],
 );
 
 export const serviceOrderItems = pgTable(
@@ -245,7 +245,7 @@ export const serviceOrderItems = pgTable(
     unitCost: money("unit_cost"),
     createdAt: createdAt(),
   },
-  (t) => [index("soi_order").on(t.orderId)],
+  (t) => [index("soi_order").on(t.orderId), index("soi_org_order").on(t.organizationId, t.orderId)],
 );
 
 /* ───────── Ventes ───────── */
@@ -267,7 +267,7 @@ export const sales = pgTable(
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("sale_ref").on(t.organizationId, t.reference), index("sale_org_date").on(t.organizationId, t.createdAt)],
+  (t) => [uniqueIndex("sale_ref").on(t.organizationId, t.reference), index("sale_org_date").on(t.organizationId, t.createdAt), index("sale_org_status_created").on(t.organizationId, t.status, t.createdAt), index("sale_org_customer").on(t.organizationId, t.customerId)],
 );
 
 export const saleItems = pgTable(
@@ -282,7 +282,7 @@ export const saleItems = pgTable(
     unitPrice: money("unit_price"),
     unitCost: money("unit_cost"),
   },
-  (t) => [index("si_sale").on(t.saleId)],
+  (t) => [index("si_sale").on(t.saleId), index("si_sale_product").on(t.saleId, t.productId)],
 );
 
 /* ───────── Devis & factures ───────── */
@@ -305,7 +305,7 @@ export const quotes = pgTable(
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("quote_ref").on(t.organizationId, t.reference)],
+  (t) => [uniqueIndex("quote_ref").on(t.organizationId, t.reference), index("quote_org_status").on(t.organizationId, t.status, t.createdAt)],
 );
 
 export const quoteItems = pgTable(
@@ -321,7 +321,7 @@ export const quoteItems = pgTable(
     quantity: integer("quantity").notNull(),
     unitPrice: money("unit_price"),
   },
-  (t) => [index("qi_quote").on(t.quoteId)],
+  (t) => [index("qi_quote").on(t.quoteId), index("qi_org_quote").on(t.organizationId, t.quoteId)],
 );
 
 export const invoices = pgTable(
@@ -352,7 +352,7 @@ export const invoices = pgTable(
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("inv_ref").on(t.organizationId, t.reference), index("inv_org_date").on(t.organizationId, t.issueDate)],
+  (t) => [uniqueIndex("inv_ref").on(t.organizationId, t.reference), index("inv_org_date").on(t.organizationId, t.issueDate), index("inv_org_created").on(t.organizationId, t.createdAt), index("inv_org_status_created").on(t.organizationId, t.status, t.createdAt), index("inv_org_customer").on(t.organizationId, t.customerId)],
 );
 
 export const invoiceItems = pgTable(
@@ -369,7 +369,7 @@ export const invoiceItems = pgTable(
     unitPrice: money("unit_price"),
     unitCost: money("unit_cost"),
   },
-  (t) => [index("ii_inv").on(t.invoiceId)],
+  (t) => [index("ii_inv").on(t.invoiceId), index("ii_org_invoice").on(t.organizationId, t.invoiceId)],
 );
 
 /* ───────── Paiements & finances ───────── */
@@ -390,7 +390,7 @@ export const payments = pgTable(
     paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
   },
-  (t) => [uniqueIndex("pay_ref").on(t.organizationId, t.reference), index("pay_org_date").on(t.organizationId, t.paidAt)],
+  (t) => [uniqueIndex("pay_ref").on(t.organizationId, t.reference), index("pay_org_date").on(t.organizationId, t.paidAt), index("pay_org_invoice_sale").on(t.organizationId, t.invoiceId, t.saleId), index("pay_org_customer").on(t.organizationId, t.customerId)],
 );
 
 export const expenseCategories = pgTable(
@@ -420,7 +420,7 @@ export const expenses = pgTable(
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [index("exp_org_date").on(t.organizationId, t.date)],
+  (t) => [index("exp_org_date").on(t.organizationId, t.date), index("exp_org_supplier").on(t.organizationId, t.supplierId)],
 );
 
 /* ───────── Achats fournisseurs ───────── */
@@ -442,7 +442,7 @@ export const purchaseOrders = pgTable(
     createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("po_ref").on(t.organizationId, t.reference)],
+  (t) => [uniqueIndex("po_ref").on(t.organizationId, t.reference), index("po_org_status").on(t.organizationId, t.status, t.createdAt)],
 );
 
 export const purchaseOrderItems = pgTable(
@@ -455,7 +455,7 @@ export const purchaseOrderItems = pgTable(
     quantity: integer("quantity").notNull(),
     unitCost: money("unit_cost"),
   },
-  (t) => [index("poi_po").on(t.purchaseOrderId)],
+  (t) => [index("poi_po").on(t.purchaseOrderId), index("poi_org_order").on(t.organizationId, t.purchaseOrderId)],
 );
 
 /* ───────── Notifications & audit ───────── */
@@ -473,7 +473,7 @@ export const notifications = pgTable(
     read: boolean("read").notNull().default(false),
     createdAt: createdAt(),
   },
-  (t) => [index("notif_user").on(t.userId, t.organizationId, t.read), uniqueIndex("notif_dedupe").on(t.userId, t.organizationId, t.dedupeKey)],
+  (t) => [index("notif_user").on(t.userId, t.organizationId, t.read), uniqueIndex("notif_dedupe").on(t.userId, t.organizationId, t.dedupeKey), index("notif_org_created").on(t.organizationId, t.createdAt)],
 );
 
 export const auditLogs = pgTable(
@@ -488,7 +488,7 @@ export const auditLogs = pgTable(
     details: jsonb("details"),
     createdAt: createdAt(),
   },
-  (t) => [index("audit_org_entity").on(t.organizationId, t.entity, t.entityId)],
+  (t) => [index("audit_org_entity").on(t.organizationId, t.entity, t.entityId), index("audit_org_created").on(t.organizationId, t.createdAt)],
 );
 
 /* ───────── Licences SaaS ───────── */
@@ -503,3 +503,31 @@ export const licenses = pgTable("licenses", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export {};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

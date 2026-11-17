@@ -14,6 +14,9 @@ export type Q = Tx | typeof db;
 export type Cx = { orgId: string; userId: string; role: s.Role };
 export type Settings = typeof s.organizationSettings.$inferSelect;
 
+const lastSync = new Map<string, number>();
+const syncInFlight = new Map<string, Promise<void>>();
+
 export async function audit(q: Q, cx: Cx, action: string, entity: string, entityId?: string | null, details?: unknown) {
   await q.insert(s.auditLogs).values({
     organizationId: cx.orgId,
@@ -465,7 +468,7 @@ export async function cancelInvoice(tx: Tx, cx: Cx, invoiceId: string, reason: s
   if (inv.stockDeducted) {
     const items = await tx.select().from(s.invoiceItems).where(eq(s.invoiceItems.invoiceId, inv.id));
     for (const it of items)
-      if (it.productId) await moveStock(tx, cx, { productId: it.productId, type: "retour", qty: it.quantity, reference: inv.reference, reason: `Annulation facture ${inv.reference}`, allowNegative: true });
+      if (it.productId) await moveStock(tx, cx, { productId: it.productId, type: "retour", qty: it.quantity, reference: inv.reference, reason: `Annulation facture ${inv.reference}`, allowNegative: st.allowNegativeStock });
   }
   await tx.update(s.invoices).set({ status: "annulee", cancelReason: reason }).where(eq(s.invoices.id, inv.id));
   if (inv.serviceOrderId) await tx.update(s.serviceOrders).set({ invoiceId: null }).where(eq(s.serviceOrders.id, inv.serviceOrderId));
@@ -526,40 +529,54 @@ export async function payPurchaseOrder(tx: Tx, cx: Cx, id: string, amount: numbe
 }
 
 /* ───────── Alertes automatiques (stock, échéances, retards) ───────── */
-const lastSync = new Map<string, number>();
 export async function syncAlerts(orgId: string, tz: string, force = false) {
   if (!force && Date.now() - (lastSync.get(orgId) ?? 0) < 60_000) return;
-  lastSync.set(orgId, Date.now());
-  const t = today(tz);
-  const low = await db
-    .select()
-    .from(s.products)
-    .where(and(eq(s.products.organizationId, orgId), eq(s.products.active, true), sql`${s.products.quantity} <= ${s.products.alertThreshold}`))
-    .limit(50);
-  for (const p of low)
-    await notify(db, orgId, {
-      perm: "stock.manage", type: p.quantity <= 0 ? "stock_out" : "stock_low",
-      title: p.quantity <= 0 ? `Produit épuisé : ${p.name}` : `Stock faible : ${p.name}`,
-      body: `Quantité restante : ${p.quantity} (seuil ${p.alertThreshold})`, link: "/stocks", dedupeKey: `stock:${p.id}:${p.quantity}`,
-    });
-  const overdue = await db
-    .select()
-    .from(s.invoices)
-    .where(and(eq(s.invoices.organizationId, orgId), eq(s.invoices.type, "facture"), inArray(s.invoices.status, ["emise", "partielle"]), sql`${s.invoices.dueDate} < ${t}::date`))
-    .limit(50);
-  for (const i of overdue)
-    await notify(db, orgId, {
-      perm: "invoices.manage", type: "invoice_overdue", title: `Échéance dépassée : ${i.reference}`,
-      body: `Reste à payer : ${round2(num(i.total) - num(i.paid))}`, link: `/factures/${i.id}`, dedupeKey: `inv-overdue:${i.id}`,
-    });
-  const late = await db
-    .select()
-    .from(s.serviceOrders)
-    .where(and(eq(s.serviceOrders.organizationId, orgId), inArray(s.serviceOrders.status, ["en_attente", "acceptee", "en_cours", "en_pause"]), sql`${s.serviceOrders.dueDate} < ${t}::date`))
-    .limit(50);
-  for (const o of late)
-    await notify(db, orgId, {
-      perm: "orders.manage", userIds: [o.assigneeId], type: "order_late", title: `Prestation en retard : ${o.reference}`,
-      body: o.title, link: `/prestations/${o.id}`, dedupeKey: `order-late:${o.id}`,
-    });
+  const key = `${orgId}:${tz}:${force ? "force" : "normal"}`;
+  if (syncInFlight.has(key)) {
+    await syncInFlight.get(key);
+    return;
+  }
+  const work = (async () => {
+    lastSync.set(orgId, Date.now());
+    const t = today(tz);
+    const low = await db
+      .select()
+      .from(s.products)
+      .where(and(eq(s.products.organizationId, orgId), eq(s.products.active, true), sql`${s.products.quantity} <= ${s.products.alertThreshold}`))
+      .limit(50);
+    for (const p of low)
+      await notify(db, orgId, {
+        perm: "stock.manage", type: p.quantity <= 0 ? "stock_out" : "stock_low",
+        title: p.quantity <= 0 ? `Produit épuisé : ${p.name}` : `Stock faible : ${p.name}`,
+        body: `Quantité restante : ${p.quantity} (seuil ${p.alertThreshold})`, link: "/stocks", dedupeKey: `stock:${p.id}:${p.quantity}`,
+      });
+    const overdue = await db
+      .select()
+      .from(s.invoices)
+      .where(and(eq(s.invoices.organizationId, orgId), eq(s.invoices.type, "facture"), inArray(s.invoices.status, ["emise", "partielle"]), sql`${s.invoices.dueDate} < ${t}::date`))
+      .limit(50);
+    for (const i of overdue)
+      await notify(db, orgId, {
+        perm: "invoices.manage", type: "invoice_overdue", title: `Échéance dépassée : ${i.reference}`,
+        body: `Reste à payer : ${round2(num(i.total) - num(i.paid))}`, link: `/factures/${i.id}`, dedupeKey: `inv-overdue:${i.id}`,
+      });
+    const late = await db
+      .select()
+      .from(s.serviceOrders)
+      .where(and(eq(s.serviceOrders.organizationId, orgId), inArray(s.serviceOrders.status, ["en_attente", "acceptee", "en_cours", "en_pause"]), sql`${s.serviceOrders.dueDate} < ${t}::date`))
+      .limit(50);
+    for (const o of late)
+      await notify(db, orgId, {
+        perm: "orders.manage", userIds: [o.assigneeId], type: "order_late", title: `Prestation en retard : ${o.reference}`,
+        body: o.title, link: `/prestations/${o.id}`, dedupeKey: `order-late:${o.id}`,
+      });
+  })();
+  syncInFlight.set(key, work);
+  try {
+    await work;
+  } finally {
+    syncInFlight.delete(key);
+  }
 }
+
+export {};
